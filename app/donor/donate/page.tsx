@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,19 +24,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
-
-// Dynamic import for Mapbox to avoid SSR issues
-const MapboxPicker = dynamic(() => import("@/components/MapboxPicker"), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-[300px] rounded-xl overflow-hidden border border-gray-700 bg-gray-900/30 flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-8 h-8 border-2 border-teal-500/30 border-t-teal-500 rounded-full animate-spin mx-auto mb-2" />
-        <p className="text-gray-500 text-sm">Loading map...</p>
-      </div>
-    </div>
-  ),
-});
+import LocationPickerWrapper from "@/components/LocationPickerWrapper";
 
 interface FormData {
   title: string;
@@ -488,13 +475,9 @@ export default function DonateFoodPage() {
                 Click on the map to select your pickup location
               </p>
 
-              <MapboxPicker
-                onLocationSelect={handleLocationSelect}
-                initialLat={40.7128}
-                initialLng={-74.006}
-              />
+              <LocationPickerWrapper onLocationSelect={handleLocationSelect} />
 
-              {formData.latitude && formData.longitude && (
+              {formData.latitude !== null && formData.longitude !== null && (
                 <Alert className="bg-teal-500/10 border-teal-500/50">
                   <CheckCircle className="w-4 h-4 text-teal-500" />
                   <AlertDescription className="text-teal-400">
