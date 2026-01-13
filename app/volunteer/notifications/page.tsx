@@ -114,134 +114,132 @@ export default function VolunteerNotificationsPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-6 md:py-8">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-48 mb-6"></div>
-          <div className="space-y-4">
-            <div className="h-24 bg-gray-200 rounded"></div>
-            <div className="h-24 bg-gray-200 rounded"></div>
-            <div className="h-24 bg-gray-200 rounded"></div>
-          </div>
-        </div>
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <div className="animate-pulse text-gray-400">Loading notifications...</div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-6 md:py-8 max-w-4xl">
-      <div className="mb-6 md:mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold mb-2">Notifications</h1>
-        <p className="text-sm md:text-base text-muted-foreground">
+    <div className="min-h-screen bg-[#0a0a0a] pb-24 md:pb-8">
+      <div className="p-4 md:p-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Notifications</h1>
+        <p className="text-gray-400">
           Stay updated on your tasks and deliveries
         </p>
       </div>
 
-      {/* Summary Card */}
-      <Card className="mb-6">
-        <CardContent className="py-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Bell className="h-5 w-5 text-muted-foreground" />
-                <span className="text-sm font-medium">
-                  {unreadCount} unread notification{unreadCount !== 1 && "s"}
-                </span>
-              </div>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <div className="flex gap-2">
-                <Button
-                  variant={filter === "all" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setFilter("all")}
-                >
-                  All
-                </Button>
-                <Button
-                  variant={filter === "unread" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setFilter("unread")}
-                >
-                  Unread ({unreadCount})
-                </Button>
-              </div>
-              {unreadCount > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={markAllAsRead}
-                >
-                  Mark all as read
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Notifications List */}
-      <div className="space-y-3">
-        {filteredNotifications.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <Bell className="h-12 w-12 md:h-16 md:w-16 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg md:text-xl font-semibold mb-2">No Notifications</h3>
-              <p className="text-sm md:text-base text-muted-foreground">
-                {filter === "unread"
-                  ? "You don't have any unread notifications."
-                  : "You don't have any notifications yet."}
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          filteredNotifications.map((notification) => (
-            <Card
-              key={notification.id}
-              className={`transition-all hover:shadow-md ${
-                !notification.read ? "bg-blue-50/50 border-blue-200" : ""
-              }`}
-            >
-              <CardContent className="py-4">
-                <div className="flex gap-4">
-                  <div className="flex-shrink-0 mt-1">
-                    {getNotificationIcon(notification.type)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <h3 className="font-semibold text-sm md:text-base">
-                        {notification.title}
-                      </h3>
-                      {!notification.read && (
-                        <Badge variant="default" className="bg-blue-500 flex-shrink-0">
-                          New
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {notification.message}
-                    </p>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        {formatTime(notification.createdAt)}
-                      </div>
-                      {!notification.read && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => markAsRead(notification.id)}
-                          className="h-7 text-xs w-full sm:w-auto"
-                        >
-                          Mark as read
-                        </Button>
-                      )}
-                    </div>
-                  </div>
+      <div className="px-4 md:px-6 space-y-6 max-w-4xl mx-auto">
+        {/* Summary Card */}
+        <Card className="bg-gray-900/50 border-gray-800">
+          <CardContent className="py-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Bell className="h-5 w-5 text-gray-400" />
+                  <span className="text-sm font-medium text-white">
+                    {unreadCount} unread notification{unreadCount !== 1 && "s"}
+                  </span>
                 </div>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex gap-2">
+                  <Button
+                    variant={filter === "all" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setFilter("all")}
+                    className={filter === "all" ? "bg-teal-500 hover:bg-teal-600" : "bg-gray-800 border-gray-700 text-white hover:bg-gray-700"}
+                  >
+                    All
+                  </Button>
+                  <Button
+                    variant={filter === "unread" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setFilter("unread")}
+                    className={filter === "unread" ? "bg-teal-500 hover:bg-teal-600" : "bg-gray-800 border-gray-700 text-white hover:bg-gray-700"}
+                  >
+                    Unread ({unreadCount})
+                  </Button>
+                </div>
+                {unreadCount > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={markAllAsRead}
+                    className="text-gray-400 hover:text-white hover:bg-gray-800"
+                  >
+                    Mark all as read
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Notifications List */}
+        <div className="space-y-3">
+          {filteredNotifications.length === 0 ? (
+            <Card className="bg-gray-900/50 border-gray-800">
+              <CardContent className="py-12 text-center">
+                <Bell className="h-12 w-12 md:h-16 md:w-16 mx-auto text-gray-600 mb-4" />
+                <h3 className="text-lg md:text-xl font-semibold text-white mb-2">No Notifications</h3>
+                <p className="text-sm md:text-base text-gray-400">
+                  {filter === "unread"
+                    ? "You don't have any unread notifications."
+                    : "You don't have any notifications yet."}
+                </p>
               </CardContent>
             </Card>
-          ))
-        )}
+          ) : (
+            filteredNotifications.map((notification) => (
+              <Card
+                key={notification.id}
+                className={`transition-all bg-gray-900/50 border-gray-800 hover:border-gray-700 ${
+                  !notification.read ? "border-teal-500/50 bg-teal-500/5" : ""
+                }`}
+              >
+                <CardContent className="py-4">
+                  <div className="flex gap-4">
+                    <div className="flex-shrink-0 mt-1">
+                      {getNotificationIcon(notification.type)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <h3 className="font-semibold text-sm md:text-base text-white">
+                          {notification.title}
+                        </h3>
+                        {!notification.read && (
+                          <Badge className="bg-teal-500 text-white flex-shrink-0">
+                            New
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-400 mb-2">
+                        {notification.message}
+                      </p>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                        <div className="flex items-center gap-1 text-xs text-gray-500">
+                          <Clock className="h-3 w-3" />
+                          {formatTime(notification.createdAt)}
+                        </div>
+                        {!notification.read && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => markAsRead(notification.id)}
+                            className="h-7 text-xs w-full sm:w-auto text-gray-400 hover:text-white hover:bg-gray-800"
+                          >
+                            Mark as read
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
       </div>
     </div>
   );

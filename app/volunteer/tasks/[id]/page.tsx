@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { mockTasks, Task } from "@/mock/tasks";
 import { useAppStore } from "@/lib/store";
+import ReadOnlyMap from "@/components/ReadOnlyMap";
 
 export default function TaskDetailPage() {
   const router = useRouter();
@@ -260,6 +261,9 @@ export default function TaskDetailPage() {
               </div>
               <span className="truncate">Pickup Location (Donor)</span>
             </CardTitle>
+            <p className="text-sm text-gray-400 mt-1">
+              Navigate to this location to pick up the food
+            </p>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center gap-2 text-gray-300">
@@ -296,6 +300,9 @@ export default function TaskDetailPage() {
               </div>
               <span className="truncate">Drop Location (NGO)</span>
             </CardTitle>
+            <p className="text-sm text-gray-400 mt-1">
+              Deliver the food to this NGO location
+            </p>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center gap-2 text-gray-300">
@@ -326,20 +333,28 @@ export default function TaskDetailPage() {
 
         <Card className="bg-gray-900/50 border-gray-800">
           <CardHeader>
-            <CardTitle className="text-white">Route Map</CardTitle>
+            <CardTitle className="text-white">Route Map (Read-Only)</CardTitle>
+            <p className="text-sm text-gray-400 mt-1">
+              Use navigation buttons above to get directions
+            </p>
           </CardHeader>
           <CardContent>
-            <div className="relative h-64 bg-gray-800 rounded-lg overflow-hidden">
-              <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
-                <div className="text-center px-4">
-                  <MapPin className="w-12 h-12 text-teal-500 mx-auto mb-2" />
-                  <p className="text-gray-400 text-sm">Map Preview</p>
-                  <p className="text-gray-500 text-xs mt-1 break-words">
-                    {task.donorAddress} → {task.ngoAddress}
-                  </p>
-                </div>
-              </div>
-            </div>
+            <ReadOnlyMap 
+              locations={[
+                {
+                  lat: task.donorLat,
+                  lng: task.donorLng,
+                  label: "Pickup: " + task.donorName,
+                  color: "teal"
+                },
+                {
+                  lat: task.ngoLat,
+                  lng: task.ngoLng,
+                  label: "Drop: " + task.ngoName,
+                  color: "blue"
+                }
+              ]}
+            />
           </CardContent>
         </Card>
 
@@ -377,11 +392,14 @@ export default function TaskDetailPage() {
         )}
 
         {task.status === "reached_ngo" && (
-          <div className="bg-orange-500/10 border border-orange-500/50 rounded-lg p-4 text-center">
-            <Clock className="w-8 h-8 text-orange-500 mx-auto mb-2" />
-            <p className="text-white font-medium mb-1">Waiting for NGO Confirmation</p>
-            <p className="text-gray-400 text-sm">
-              The NGO will confirm the delivery. Once confirmed, this task will be completed.
+          <div className="bg-orange-500/10 border border-orange-500/50 rounded-lg p-6 text-center">
+            <Clock className="w-12 h-12 text-orange-500 mx-auto mb-3" />
+            <p className="text-white font-semibold text-lg mb-2">Waiting for NGO Confirmation</p>
+            <p className="text-gray-300 text-sm mb-3">
+              You have successfully reached the NGO location. The NGO will verify and confirm the delivery.
+            </p>
+            <p className="text-gray-400 text-xs">
+              Once the NGO confirms receipt, this task will automatically be marked as completed and moved to your history.
             </p>
           </div>
         )}
