@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import LocationPickerWrapper from "@/components/LocationPickerWrapper";
 import {
   Package,
   CheckCircle2,
@@ -61,26 +62,40 @@ export default function NGOPage() {
 
   // Check if location is set on component mount
   useEffect(() => {
-    if (!ngo.location) {
+    const savedLocation = localStorage.getItem("ngo_location");
+    if (savedLocation) {
+      try {
+        const parsedLocation = JSON.parse(savedLocation);
+        setNgo((prev) => ({ ...prev, location: parsedLocation }));
+        setLocationData((prev) => ({
+          ...prev,
+          lat: parsedLocation.lat,
+          lng: parsedLocation.lng,
+        }));
+        setShowLocationSetup(false);
+      } catch (e) {
+        console.error("Failed to parse saved location", e);
+      }
+    } else if (!ngo.location) {
       setShowLocationSetup(true);
     }
-  }, [ngo.location]);
+  }, []);
 
-  const handleLocationClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    // Convert click position to approximate lat/lng
-    const lng = -74.006 + (x / rect.width - 0.5) * 0.1;
-    const lat = 40.7128 - (y / rect.height - 0.5) * 0.1;
-
-    setLocationData((prev) => ({
-      ...prev,
-      lat: parseFloat(lat.toFixed(6)),
-      lng: parseFloat(lng.toFixed(6)),
-    }));
-  };
+  useEffect(() => {
+    if (typeof navigator !== "undefined" && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setLocationData((prev) => ({
+            ...prev,
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          }));
+        },
+        () => {},
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+    }
+  }, []);
 
   const handleSaveLocation = async () => {
     if (!locationData.address || !locationData.city || !locationData.state || !locationData.zipCode) {
@@ -94,14 +109,18 @@ export default function NGOPage() {
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
     const fullAddress = `${locationData.address}, ${locationData.city}, ${locationData.state} ${locationData.zipCode}`;
+    
+    const locationObj = {
+      lat: locationData.lat,
+      lng: locationData.lng,
+      address: fullAddress,
+    };
+
+    localStorage.setItem("ngo_location", JSON.stringify(locationObj));
 
     setNgo({
       ...ngo,
-      location: {
-        lat: locationData.lat,
-        lng: locationData.lng,
-        address: fullAddress,
-      },
+      location: locationObj,
     });
 
     setIsSaving(false);
@@ -401,40 +420,13 @@ export default function NGOPage() {
               <Label className="text-gray-300 mb-2 block">
                 Click on the map to set exact coordinates
               </Label>
-              <div
-                onClick={handleLocationClick}
-                className="relative w-full h-64 rounded-lg overflow-hidden bg-gray-800 cursor-crosshair border-2 border-gray-700 hover:border-teal-500 transition-colors"
-                style={{
-                  backgroundImage: `url(https://tile.openstreetmap.org/8/${Math.floor(
-                    ((locationData.lng + 180) / 360) * Math.pow(2, 8)
-                  )}/${Math.floor(
-                    ((1 -
-                      Math.log(
-                        Math.tan((locationData.lat * Math.PI) / 180) +
-                          1 / Math.cos((locationData.lat * Math.PI) / 180)
-                      ) /
-                        Math.PI) /
-                      2) *
-                      Math.pow(2, 8)
-                  )}.png)`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                }}
-              >
-                {/* Map Marker */}
-                <div
-                  className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-full animate-bounce"
-                >
-                  <MapPin className="w-10 h-10 text-red-500 drop-shadow-lg" />
-                </div>
-
-                {/* Instructions Overlay */}
-                <div className="absolute top-2 left-2 right-2 bg-gray-900/90 p-3 rounded-lg">
-                  <p className="text-sm text-white">
-                    📍 Click anywhere on the map to set your location
-                  </p>
-                </div>
-              </div>
+              <LocationPickerWrapper
+                onLocationSelect={(lat, lng) =>
+                  setLocationData((prev) => ({ ...prev, lat, lng }))
+                }
+                initialLat={locationData.lat}
+                initialLng={locationData.lng}
+              />
 
               <div className="bg-gray-800/50 p-3 rounded-lg mt-2">
                 <p className="text-sm text-gray-400">
