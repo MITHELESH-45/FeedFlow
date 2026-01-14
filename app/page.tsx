@@ -1,11 +1,25 @@
-export default function HomePage() {
+"use client";
+
+import Navbar from "@/components/landing/Navbar";
+import HeroSection from "@/components/landing/HeroSection";
+import FeaturesSection from "@/components/landing/FeaturesSection";
+import StatsSection from "@/components/landing/StatsSection";
+import AboutSection from "@/components/landing/AboutSection";
+import WorkflowSection from "@/components/landing/WorkflowSection";
+import RolesSection from "@/components/landing/RolesSection";
+import Footer from "@/components/landing/Footer";
+
+export default function Page() {
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-4">Welcome to FeedFlow</h1>
-      <p className="text-muted-foreground">
-        Food Waste Management & Donation Platform
-      </p>
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <HeroSection />
+      <FeaturesSection />
+      <StatsSection />
+      <AboutSection />
+      <WorkflowSection />
+      <RolesSection />
+      <Footer />
     </div>
   );
 }
-
