@@ -24,14 +24,20 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
     return decoded;
-  } catch (error) {
+  } catch (error: any) {
     return null;
   }
 }
 
 export async function getAuthUser(request: NextRequest): Promise<IUser | null> {
   try {
-    const token = request.headers.get("authorization")?.replace("Bearer ", "");
+    const authHeader = request.headers.get("authorization");
+    
+    if (!authHeader) {
+      return null;
+    }
+
+    const token = authHeader.replace("Bearer ", "").trim();
 
     if (!token) {
       return null;
@@ -44,8 +50,14 @@ export async function getAuthUser(request: NextRequest): Promise<IUser | null> {
 
     await import("./db").then((m) => m.default());
     const user = await User.findById(payload.userId);
+    
+    if (!user) {
+      return null;
+    }
+    
     return user;
   } catch (error) {
+    console.error("getAuthUser error:", error);
     return null;
   }
 }

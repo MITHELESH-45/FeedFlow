@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Task from "@/lib/models/Task";
 import Food from "@/lib/models/Food";
+import Request from "@/lib/models/Request";
 import { requireAuth } from "@/lib/auth";
 import { createNotification } from "@/lib/utils/notifications";
 
@@ -72,13 +73,22 @@ export async function POST(
       updateData.acceptedAt = now;
     } else if (status === "picked_up") {
       updateData.pickedUpAt = now;
-      // Update food status
+      // Update food status to reflect volunteer picked up
       await Food.findByIdAndUpdate(task.foodId, { status: "picked_up" });
+      // Update request status if needed
+      await Request.findByIdAndUpdate(task.requestId, { status: "approved" });
     } else if (status === "reached_ngo") {
       updateData.reachedNgoAt = now;
-      // Update food status
+      // Update food status to reflect volunteer reached NGO
       await Food.findByIdAndUpdate(task.foodId, { status: "reached_ngo" });
     }
+
+    console.log("Updating task status:", {
+      taskId: params.id,
+      oldStatus: task.status,
+      newStatus: status,
+      updateData
+    });
 
     const updatedTask = await Task.findByIdAndUpdate(
       params.id,
@@ -90,20 +100,20 @@ export async function POST(
 
     // Create notifications
     const food = await Food.findById(task.foodId).populate("donorId").lean();
-    const request = await Request.findById(task.requestId).populate("ngoId").lean();
+    const foodRequest = await Request.findById(task.requestId).populate("ngoId").lean();
 
     if (status === "picked_up") {
       await createNotification(
         food?.donorId?._id.toString() || "",
         "Food Picked Up",
-        `Volunteer has picked up your donation "${food?.name}".`,
+        `Volunteer has picked up your donation "${food?.foodType || food?.name}".`,
         "success"
       );
     } else if (status === "reached_ngo") {
       await createNotification(
-        request?.ngoId?._id.toString() || "",
+        foodRequest?.ngoId?._id.toString() || "",
         "Food Reached Your Location",
-        `Volunteer has reached your location with "${food?.name}". Please confirm delivery.`,
+        `Volunteer has reached your location with "${food?.foodType || food?.name}". Please confirm delivery.`,
         "success"
       );
     }

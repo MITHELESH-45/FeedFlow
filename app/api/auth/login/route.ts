@@ -16,33 +16,53 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    await dbConnect();
+
     const ADMIN_EMAIL = "admin@gmail.com";
     const ADMIN_PASSWORD = "admin123";
-    if (email.toLowerCase() === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-      const adminUser = {
-        _id: "admin-hardcoded-id",
-        name: "Admin User",
-        email: ADMIN_EMAIL,
-        password: "",
-        role: "admin" as const,
-        status: "approved" as const,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as unknown as User;
-      const adminToken = generateToken(adminUser as any);
+    
+    // Check if it's admin login
+    if (email.toLowerCase() === ADMIN_EMAIL) {
+      // Find admin user in database
+      let adminUser = await User.findOne({ email: ADMIN_EMAIL, role: "admin" });
+      
+      if (!adminUser) {
+        // Create admin user if it doesn't exist
+        if (password === ADMIN_PASSWORD) {
+          const hashedPassword = await bcrypt.hash(ADMIN_PASSWORD, 10);
+          adminUser = await User.create({
+            name: "Admin User",
+            email: ADMIN_EMAIL,
+            password: hashedPassword,
+            role: "admin",
+            status: "approved",
+          });
+        } else {
+          return NextResponse.json(
+            { error: "Invalid credentials" },
+            { status: 401 }
+          );
+        }
+      } else {
+        // Verify password matches (compare hashed password)
+        const isValidPassword = await bcrypt.compare(password, adminUser.password);
+        if (!isValidPassword) {
+          return NextResponse.json(
+            { error: "Invalid credentials" },
+            { status: 401 }
+          );
+        }
+      }
+      
+      const adminToken = generateToken(adminUser);
+      const userObj = adminUser.toObject();
+      delete userObj.password;
+      
       return NextResponse.json({
-        user: {
-          id: "admin-hardcoded-id",
-          name: "Admin User",
-          email: ADMIN_EMAIL,
-          role: "admin",
-          status: "approved",
-        },
+        user: userObj,
         token: adminToken,
       });
     }
-
-    await dbConnect();
 
     // Find user
     const user = await User.findOne({ email: email.toLowerCase() });

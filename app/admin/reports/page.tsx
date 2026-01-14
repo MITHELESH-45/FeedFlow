@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -20,48 +21,68 @@ import {
 import { TrendingUp, Package, CheckCircle, XCircle, Users, Building2 } from "lucide-react";
 
 export default function ReportsPage() {
-  // Mock analytics data - would come from backend
-  const foodDonationData = [
-    { month: "Jan", donated: 120, completed: 95, expired: 10 },
-    { month: "Feb", donated: 150, completed: 130, expired: 8 },
-    { month: "Mar", donated: 180, completed: 160, expired: 12 },
-    { month: "Apr", donated: 145, completed: 125, expired: 9 },
-    { month: "May", donated: 200, completed: 180, expired: 15 },
-    { month: "Jun", donated: 220, completed: 195, expired: 18 },
-  ];
+  const [loading, setLoading] = useState(true);
+  const [overallStats, setOverallStats] = useState({
+    totalFoodDonated: 0,
+    completedDeliveries: 0,
+    expiredFood: 0,
+    completionRate: 0,
+    expiryRate: 0,
+    activeNGOs: 0,
+    activeVolunteers: 0,
+  });
+  const [foodDonationData, setFoodDonationData] = useState<any[]>([]);
+  const [foodTypeData, setFoodTypeData] = useState<any[]>([]);
+  const [ngoPerformanceData, setNgoPerformanceData] = useState<any[]>([]);
+  const [volunteerPerformanceData, setVolunteerPerformanceData] = useState<any[]>([]);
 
-  const foodTypeData = [
-    { name: "Cooked", value: 450, color: "#3b82f6" },
-    { name: "Packaged", value: 320, color: "#10b981" },
-    { name: "Fresh", value: 380, color: "#f59e0b" },
-  ];
+  useEffect(() => {
+    const fetchReports = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch("/api/admin/reports?type=overview", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setOverallStats({
+            totalFoodDonated: data.totalFood || 0,
+            completedDeliveries: data.completedTasks || 0,
+            expiredFood: data.expiredFood || 0,
+            completionRate: data.totalTasks > 0 ? Math.round((data.completedTasks / data.totalTasks) * 100) : 0,
+            expiryRate: data.totalFood > 0 ? Math.round((data.expiredFood / data.totalFood) * 100) : 0,
+            activeNGOs: data.totalNGOs || 0,
+            activeVolunteers: data.totalVolunteers || 0,
+          });
+          
+          // Set placeholder chart data (would need more detailed API endpoints for real chart data)
+          setFoodDonationData([
+            { month: "Jan", donated: data.totalFood || 0, completed: data.completedTasks || 0, expired: data.expiredFood || 0 },
+          ]);
+          setFoodTypeData([
+            { name: "Cooked", value: Math.floor((data.totalFood || 0) * 0.4), color: "#3b82f6" },
+            { name: "Packaged", value: Math.floor((data.totalFood || 0) * 0.3), color: "#10b981" },
+            { name: "Fresh", value: Math.floor((data.totalFood || 0) * 0.3), color: "#f59e0b" },
+          ]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch reports:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchReports();
+  }, []);
 
-  const ngoPerformanceData = [
-    { ngo: "Hope Foundation", requests: 45, received: 42, rate: 93 },
-    { ngo: "Community Kitchen", requests: 38, received: 35, rate: 92 },
-    { ngo: "Shelter Aid", requests: 52, received: 45, rate: 87 },
-    { ngo: "Food for All", requests: 28, received: 24, rate: 86 },
-    { ngo: "City Relief", requests: 41, received: 38, rate: 93 },
-  ];
-
-  const volunteerPerformanceData = [
-    { volunteer: "Bob Johnson", total: 45, completed: 45, rate: 100 },
-    { volunteer: "Alice Williams", total: 38, completed: 37, rate: 97 },
-    { volunteer: "Charlie Brown", total: 32, completed: 30, rate: 94 },
-    { volunteer: "Diana Prince", total: 51, completed: 51, rate: 100 },
-    { volunteer: "Eve Adams", total: 28, completed: 26, rate: 93 },
-  ];
-
-  const overallStats = {
-    totalFoodDonated: 1150,
-    completedDeliveries: 885,
-    expiredFood: 72,
-    activeNGOs: 12,
-    activeVolunteers: 18,
-    averageDeliveryTime: "2.5 hours",
-    completionRate: 77,
-    expiryRate: 6.3
-  };
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-12 text-muted-foreground">Loading reports...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">

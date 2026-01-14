@@ -36,37 +36,56 @@ export default function MyRequestsPage() {
   useEffect(() => {
     const fetchRequests = async () => {
       try {
-        const res = await fetch("/api/ngo/requests");
+        const token = localStorage.getItem("token");
+        const res = await fetch("/api/ngo/requests", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
         const data = await res.json();
         if (res.ok) {
-          setRequests(data.requests.map((r: any) => {
+          console.log("Fetched requests:", data);
+          const mappedRequests = Array.isArray(data) ? data.map((r: any) => {
              let status = "requested";
              if (r.status === "pending") status = "requested";
              else if (r.status === "rejected") status = "rejected";
              else if (r.status === "approved") {
-                 const fs = r.food?.status;
+                 const fs = r.foodId?.status;
                  if (fs === "picked_up") status = "in_transit";
                  else if (fs === "reached_ngo") status = "reached_ngo";
                  else if (fs === "completed") status = "completed";
                  else status = "approved";
+             } else if (r.status === "completed") {
+                 status = "completed";
              }
+
+             // Get volunteer info from task
+             const task = r.task || null;
+             const volunteerName = task?.volunteerId?.name || null;
 
              return {
                  id: r._id,
-                 foodId: r.food?._id,
-                 donorName: r.food?.donor?.name || "Unknown",
-                 foodType: r.food?.foodType,
+                 foodId: r.foodId?._id || r.foodId,
+                 donorName: r.foodId?.donorId?.name || "Unknown",
+                 foodType: r.foodId?.foodType || "Unknown",
+                 foodDescription: r.foodId?.description || "",
+                 imageUrl: r.foodId?.imageUrl,
                  requestedQuantity: r.quantity,
-                 unit: r.food?.unit || "units",
+                 unit: r.foodId?.unit || "units",
                  status: status,
-                 requestDate: r.createdAt,
-                 pickupLocation: r.food?.pickupLocation || { address: "Unknown" },
-                 deliveryLocation: { address: "My Address" }, 
+                 requestDate: r.createdAt || r.requestedAt,
+                 pickupLocation: r.foodId?.pickupLocation || { address: "Unknown" },
+                 deliveryLocation: r.ngoId?.deliveryLocation || { address: "NGO Address" },
+                 assignedVolunteer: volunteerName,
+                 completedDate: r.status === "completed" ? r.updatedAt : null,
              };
-          }));
+          }) : [];
+          setRequests(mappedRequests);
+        } else {
+          console.error("Failed to fetch requests:", data);
         }
       } catch (e) {
-        console.error(e);
+        console.error("Error fetching requests:", e);
       } finally {
         setIsLoading(false);
       }
@@ -107,20 +126,80 @@ export default function MyRequestsPage() {
     setShowFeedbackDialog(true);
   };
 
-  const handleSubmitFeedback = () => {
-    console.log("Delivery confirmed with feedback:", {
-      requestId: selectedRequest.id,
-      rating,
-      feedback,
-    });
+  const handleSubmitFeedback = async () => {
+    if (!selectedRequest) return;
 
-    // Update request status to completed
-    // In real app, make API call here
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/ngo/requests/${selectedRequest.id}/complete`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          rating,
+          feedback,
+        }),
+      });
 
-    alert("Delivery confirmed! Thank you for your feedback.");
-    setShowFeedbackDialog(false);
-    setRating(5);
-    setFeedback("");
+      const data = await res.json();
+      if (res.ok) {
+        alert("Delivery confirmed! Thank you for your feedback.");
+        setShowFeedbackDialog(false);
+        setRating(5);
+        setFeedback("");
+        // Refresh requests
+        const refreshRes = await fetch("/api/ngo/requests", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const refreshData = await refreshRes.json();
+        if (refreshRes.ok && Array.isArray(refreshData)) {
+          const mappedRequests = refreshData.map((r: any) => {
+            let status = "requested";
+            if (r.status === "pending") status = "requested";
+            else if (r.status === "rejected") status = "rejected";
+            else if (r.status === "approved") {
+              const fs = r.foodId?.status;
+              if (fs === "picked_up") status = "in_transit";
+              else if (fs === "reached_ngo") status = "reached_ngo";
+              else if (fs === "completed") status = "completed";
+              else status = "approved";
+            } else if (r.status === "completed") {
+              status = "completed";
+            }
+
+            const task = r.task || null;
+            const volunteerName = task?.volunteerId?.name || null;
+
+            return {
+              id: r._id,
+              foodId: r.foodId?._id || r.foodId,
+              donorName: r.foodId?.donorId?.name || "Unknown",
+              foodType: r.foodId?.foodType || "Unknown",
+              foodDescription: r.foodId?.description || "",
+              imageUrl: r.foodId?.imageUrl,
+              requestedQuantity: r.quantity,
+              unit: r.foodId?.unit || "units",
+              status: status,
+              requestDate: r.createdAt || r.requestedAt,
+              pickupLocation: r.foodId?.pickupLocation || { address: "Unknown" },
+              deliveryLocation: r.ngoId?.deliveryLocation || { address: "NGO Address" },
+              assignedVolunteer: volunteerName,
+              completedDate: r.status === "completed" ? r.updatedAt : null,
+            };
+          });
+          setRequests(mappedRequests);
+        }
+      } else {
+        alert(data.error || "Failed to confirm delivery");
+      }
+    } catch (error) {
+      console.error("Error confirming delivery:", error);
+      alert("Failed to confirm delivery. Please try again.");
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -168,9 +247,19 @@ export default function MyRequestsPage() {
             ))}
           </div>
 
+          {/* Loading State */}
+          {isLoading && (
+            <Card className="bg-gray-900/50 border-gray-800 p-12">
+              <div className="text-center">
+                <div className="animate-pulse text-gray-400">Loading requests...</div>
+              </div>
+            </Card>
+          )}
+
           {/* Requests List */}
-          <div className="space-y-4">
-            {filteredRequests.map((request) => (
+          {!isLoading && (
+            <div className="space-y-4">
+              {filteredRequests.map((request) => (
               <Card key={request.id} className="bg-gray-900/50 border-gray-800 p-6">
                 <div className="flex flex-col md:flex-row justify-between gap-4">
                   {/* Request Info */}
@@ -288,11 +377,12 @@ export default function MyRequestsPage() {
                   </div>
                 </div>
               </Card>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           {/* Empty State */}
-          {filteredRequests.length === 0 && (
+          {!isLoading && filteredRequests.length === 0 && (
             <Card className="bg-gray-900/50 border-gray-800 p-12">
               <div className="text-center">
                 <Package className="w-16 h-16 text-gray-600 mx-auto mb-4" />

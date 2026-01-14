@@ -40,28 +40,33 @@ export default function DeliveryMonitoringPage() {
 
   const fetchDeliveries = async () => {
     try {
-      const res = await fetch("/api/admin/tasks");
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/admin/deliveries", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       const data = await res.json();
       if (res.ok) {
         setDeliveries(
-          data.tasks.map((task: any) => ({
+          data.map((task: any) => ({
             ...task,
             id: task._id,
-            foodName: task.food?.title || "Unknown Food",
-            foodDescription: task.food?.description,
-            quantity: task.food?.quantity,
-            unit: task.food?.unit,
-            volunteerName: task.volunteer?.name || "Unassigned",
-            ngoName: task.ngo?.name || "Unknown NGO",
-            ngoPhone: task.ngo?.phone || "",
-            ngoAddress: task.ngo?.deliveryLocation?.address || task.ngo?.address || "",
-            ngoLat: task.ngo?.deliveryLocation?.lat,
-            ngoLng: task.ngo?.deliveryLocation?.lng,
-            donorName: task.donor?.name || "Unknown Donor",
-            donorPhone: task.donor?.phone || "",
-            donorAddress: task.food?.pickupLocation?.address || "",
-            donorLat: task.food?.pickupLocation?.lat,
-            donorLng: task.food?.pickupLocation?.lng,
+            foodName: task.foodId?.foodType || "Unknown Food",
+            foodDescription: task.foodId?.description || "",
+            quantity: task.foodId?.quantity || 0,
+            unit: task.foodId?.unit || "",
+            volunteerName: task.volunteerId?.name || "Unassigned",
+            ngoName: task.requestId?.ngoId?.name || "Unknown NGO",
+            ngoPhone: task.requestId?.ngoId?.phone || "",
+            ngoAddress: task.requestId?.ngoId?.deliveryLocation?.address || "",
+            ngoLat: task.requestId?.ngoId?.deliveryLocation?.lat || 0,
+            ngoLng: task.requestId?.ngoId?.deliveryLocation?.lng || 0,
+            donorName: task.foodId?.donorId?.name || "Unknown Donor",
+            donorPhone: task.foodId?.donorId?.phone || "",
+            donorAddress: task.foodId?.pickupLocation?.address || "",
+            donorLat: task.foodId?.pickupLocation?.lat || 0,
+            donorLng: task.foodId?.pickupLocation?.lng || 0,
           }))
         );
       } else {

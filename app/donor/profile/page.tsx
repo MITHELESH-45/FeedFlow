@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,25 +21,71 @@ import {
   Award,
   Package,
 } from "lucide-react";
+import { useAppStore } from "@/lib/store";
 
 export default function DonorProfilePage() {
+  const user = useAppStore((state) => state.user);
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "John Restaurant",
-    email: "donor@feedflow.com",
-    phone: "+1 (555) 123-4567",
-    organization: "John's Restaurant & Catering",
-    address: "123 Main Street, New York, NY 10001",
-    bio: "A family-owned restaurant committed to reducing food waste and helping our community. We regularly donate surplus food to help those in need.",
-    avatar: "",
+  const [formData, setFormData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [stats, setStats] = useState({
+    totalDonations: 0,
+    foodDonated: "0 kg",
+    impactScore: 0,
+    activeSince: "",
   });
 
-  const stats = {
-    totalDonations: 24,
-    foodDonated: "450 kg",
-    impactScore: 95,
-    activeSince: "Jan 2025",
-  };
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        
+        // Fetch profile
+        const profileRes = await fetch("/api/donor/profile", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const profileData = await profileRes.json();
+        if (profileRes.ok) {
+          setFormData({
+            name: profileData.name || "",
+            email: profileData.email || "",
+            phone: profileData.phone || "",
+            organization: profileData.organization || "",
+            address: "",
+            bio: "",
+            avatar: "",
+          });
+          setStats({
+            activeSince: new Date(profileData.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+          });
+        }
+
+        // Fetch dashboard stats
+        const dashboardRes = await fetch("/api/donor/dashboard", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const dashboardData = await dashboardRes.json();
+        if (dashboardRes.ok) {
+          setStats(prev => ({
+            ...prev,
+            totalDonations: dashboardData.totalUploaded || 0,
+            foodDonated: `${dashboardData.totalUploaded || 0} items`,
+            impactScore: dashboardData.totalUploaded > 0 ? Math.min(100, Math.floor((dashboardData.completedDonations / dashboardData.totalUploaded) * 100)) : 0,
+          }));
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -48,15 +94,78 @@ export default function DonorProfilePage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = () => {
-    // Save logic here
-    setIsEditing(false);
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/donor/profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          phone: formData.phone,
+          organization: formData.organization,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setIsEditing(false);
+        alert("Profile updated successfully!");
+      } else {
+        alert(data.error || "Failed to update profile");
+      }
+    } catch (error) {
+      console.error("Failed to save profile:", error);
+      alert("Failed to update profile");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCancel = () => {
     setIsEditing(false);
-    // Reset form data
+    // Reload original data
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch("/api/donor/profile", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setFormData({
+            name: data.name || "",
+            email: data.email || "",
+            phone: data.phone || "",
+            organization: data.organization || "",
+            address: "",
+            bio: "",
+            avatar: "",
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile:", error);
+      }
+    };
+    fetchProfile();
   };
+
+  if (loading || !formData) {
+    return (
+      <div className="flex h-screen bg-[#0a0a0a] text-foreground overflow-hidden">
+        <main className="flex-1 flex flex-col h-full relative overflow-y-auto">
+          <div className="p-4 md:p-8 space-y-6 max-w-5xl mx-auto w-full pb-24 md:pb-20">
+            <div className="text-center py-12 text-gray-400">Loading profile...</div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-[#0a0a0a] text-foreground overflow-hidden">
@@ -84,10 +193,11 @@ export default function DonorProfilePage() {
               <div className="flex gap-2">
                 <Button
                   onClick={handleSave}
+                  disabled={saving}
                   className="bg-teal-500 hover:bg-teal-600 text-white"
                 >
                   <Save className="w-4 h-4 mr-2" />
-                  Save Changes
+                  {saving ? "Saving..." : "Save Changes"}
                 </Button>
                 <Button
                   onClick={handleCancel}

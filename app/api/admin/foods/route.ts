@@ -26,7 +26,34 @@ export async function GET(request: NextRequest) {
       .sort({ createdAt: -1 })
       .lean();
 
-    return NextResponse.json(foods);
+    // Get NGO and volunteer info from requests and tasks
+    const Request = (await import("@/lib/models/Request")).default;
+    const Task = (await import("@/lib/models/Task")).default;
+
+    const foodsWithRelations = await Promise.all(
+      foods.map(async (food: any) => {
+        // Find approved request for this food
+        const request = await Request.findOne({
+          foodId: food._id,
+          status: "approved",
+        })
+          .populate("ngoId", "name")
+          .lean();
+
+        // Find task for this food
+        const task = await Task.findOne({ foodId: food._id })
+          .populate("volunteerId", "name")
+          .lean();
+
+        return {
+          ...food,
+          ngoName: request?.ngoId?.name || null,
+          volunteerName: task?.volunteerId?.name || null,
+        };
+      })
+    );
+
+    return NextResponse.json(foodsWithRelations);
   } catch (error: any) {
     console.error("Get foods error:", error);
     return NextResponse.json(

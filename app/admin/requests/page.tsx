@@ -60,27 +60,52 @@ export default function RequestReviewPage() {
 
   const fetchRequests = async () => {
     try {
-      const res = await fetch("/api/admin/requests");
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("Please login first");
+        setIsLoading(false);
+        return;
+      }
+      
+      const res = await fetch("/api/admin/requests", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error("API Error:", errorData);
+        toast.error(errorData.error || "Failed to load requests");
+        setIsLoading(false);
+        return;
+      }
+      
       const data = await res.json();
-      if (res.ok) {
-        setRequests(data.requests.map((r: any) => ({
+      console.log("Fetched Requests:", data);
+      
+      if (Array.isArray(data)) {
+        setRequests(data.map((r: any) => ({
           id: r._id,
-          foodId: r.food?._id,
-          foodName: r.food?.title,
-          foodDescription: r.food?.description || "",
+          foodId: r.foodId?._id || r.foodId,
+          foodName: r.foodId?.foodType || "Unknown",
+          foodDescription: r.foodId?.description || "",
           quantity: r.quantity,
-          unit: r.food?.unit || "units",
-          donorName: r.food?.donor?.name || "Unknown",
-          donorAddress: r.food?.pickupLocation?.address || "",
-          pickupLocation: r.food?.pickupLocation || { lat: 0, lng: 0 },
-          ngoId: r.ngo?._id,
-          ngoName: r.ngo?.name,
-          ngoAddress: r.ngo?.address || "", 
-          ngoLocation: { lat: 0, lng: 0 },
+          unit: r.foodId?.unit || "units",
+          donorName: r.foodId?.donorId?.name || "Unknown",
+          donorAddress: r.foodId?.pickupLocation?.address || "",
+          pickupLocation: r.foodId?.pickupLocation || { lat: 0, lng: 0 },
+          ngoId: r.ngoId?._id || r.ngoId,
+          ngoName: r.ngoId?.name || "Unknown",
+          ngoAddress: r.ngoId?.deliveryLocation?.address || "", 
+          ngoLocation: r.ngoId?.deliveryLocation || { lat: 0, lng: 0 },
           status: r.status,
           requestedAt: r.createdAt,
-          expiryDate: r.food?.expiryTime
+          expiryDate: r.foodId?.expiryTime
         })));
+      } else {
+        console.error("Invalid data format:", data);
+        toast.error("Invalid response format");
       }
     } catch (error) {
       console.error("Failed to fetch requests:", error);
@@ -101,10 +126,13 @@ export default function RequestReviewPage() {
 
   const handleApprove = async (requestId: string, foodId: string) => {
     try {
-      const res = await fetch("/api/admin/requests", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requestId, status: "approved" }),
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/admin/requests/${requestId}/approve`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
       });
       
       if (res.ok) {
@@ -113,7 +141,8 @@ export default function RequestReviewPage() {
         setSelectedRequest(null);
         setViewingFood(null);
       } else {
-        toast.error("Failed to approve request");
+        const data = await res.json();
+        toast.error(data.error || "Failed to approve request");
       }
     } catch (error) {
       toast.error("Error approving request");
@@ -122,10 +151,13 @@ export default function RequestReviewPage() {
 
   const handleReject = async (requestId: string) => {
     try {
-      const res = await fetch("/api/admin/requests", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requestId, status: "rejected" }),
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/admin/requests/${requestId}/reject`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
       });
       
       if (res.ok) {
@@ -133,7 +165,8 @@ export default function RequestReviewPage() {
         fetchRequests();
         setSelectedRequest(null);
       } else {
-        toast.error("Failed to reject request");
+        const data = await res.json();
+        toast.error(data.error || "Failed to reject request");
       }
     } catch (error) {
       toast.error("Error rejecting request");
@@ -201,8 +234,21 @@ export default function RequestReviewPage() {
       </div>
 
       {/* Food Items with Multiple Requests */}
-      <div className="space-y-6">
-        {Object.entries(groupedRequests).map(([foodId, foodRequests]) => {
+      {isLoading ? (
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            Loading requests...
+          </CardContent>
+        </Card>
+      ) : Object.keys(groupedRequests).length === 0 ? (
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            {requests.length === 0 ? "No food requests submitted yet" : "No requests match your search criteria"}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-6">
+          {Object.entries(groupedRequests).map(([foodId, foodRequests]) => {
           const hasPending = foodRequests.some(r => r.status === "pending");
           if (!hasPending && viewingFood !== foodId) return null;
 
@@ -281,7 +327,8 @@ export default function RequestReviewPage() {
             </Card>
           );
         })}
-      </div>
+        </div>
+      )}
 
       {/* Request Review Dialog with Map */}
       <Dialog open={!!selectedRequest} onOpenChange={() => {

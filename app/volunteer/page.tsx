@@ -581,12 +581,21 @@ export default function VolunteerPage() {
                     </div>
                   </div>
                 </div>
-                <Button
-                  onClick={() => router.push(`/volunteer/tasks/${currentTask.id}`)}
-                  className="w-full bg-teal-500 hover:bg-teal-600 text-white"
-                >
-                  {getButtonText(currentTask.status)}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => router.push(`/volunteer/tasks`)}
+                    variant="outline"
+                    className="flex-1 border-teal-500 text-teal-500 hover:bg-teal-500/10"
+                  >
+                    View All Tasks
+                  </Button>
+                  <Button
+                    onClick={() => router.push(`/volunteer/tasks/${currentTask.id}`)}
+                    className="flex-1 bg-teal-500 hover:bg-teal-600 text-white"
+                  >
+                    {getButtonText(currentTask.status)}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
 
@@ -615,12 +624,16 @@ export default function VolunteerPage() {
               <h3 className="text-xl font-semibold text-white mb-2">
                 Waiting for assignment from admin
               </h3>
-              <p className="text-gray-400 mb-2">
+              <p className="text-gray-400 mb-4">
                 You will be notified once a task is assigned
               </p>
-              <p className="text-sm text-gray-500">
-                Check back later or contact admin for updates
-              </p>
+              <Button
+                onClick={() => router.push("/volunteer/tasks")}
+                variant="outline"
+                className="border-teal-500 text-teal-500 hover:bg-teal-500/10"
+              >
+                View All Tasks
+              </Button>
             </CardContent>
           </Card>
         )}

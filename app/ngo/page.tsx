@@ -30,23 +30,8 @@ import {
   Save,
 } from "lucide-react";
 
-// Mock NGO data
-const ngoData = {
-  id: "1",
-  name: "Food Bank NYC",
-  email: "contact@foodbanknyc.org",
-  status: "pending", // "pending" | "approved" | "rejected"
-  location: null as { lat: number; lng: number; address: string } | null, // Set to null to trigger setup
-  stats: {
-    totalRequests: 0,
-    approvedRequests: 0,
-    completedDeliveries: 0,
-    pendingRequests: 0,
-  },
-};
-
 export default function NGOPage() {
-  const [ngo, setNgo] = useState(ngoData);
+  const [ngo, setNgo] = useState<any>(null);
   const [showLocationSetup, setShowLocationSetup] = useState(false);
   const [locationData, setLocationData] = useState({
     address: "",
@@ -57,29 +42,68 @@ export default function NGOPage() {
     lng: -74.006,
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalRequests: 0,
+    approvedRequests: 0,
+    completedDeliveries: 0,
+    pendingRequests: 0,
+  });
 
-  const isApproved = ngo.status === "approved";
-
-  // Check if location is set on component mount
   useEffect(() => {
-    const savedLocation = localStorage.getItem("ngo_location");
-    if (savedLocation) {
+    const fetchData = async () => {
       try {
-        const parsedLocation = JSON.parse(savedLocation);
-        setNgo((prev) => ({ ...prev, location: parsedLocation }));
-        setLocationData((prev) => ({
-          ...prev,
-          lat: parsedLocation.lat,
-          lng: parsedLocation.lng,
-        }));
-        setShowLocationSetup(false);
-      } catch (e) {
-        console.error("Failed to parse saved location", e);
+        const token = localStorage.getItem("token");
+        
+        // Fetch NGO profile
+        const profileRes = await fetch("/api/ngo/profile", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const profileData = await profileRes.json();
+        if (profileRes.ok) {
+          setNgo(profileData);
+          if (!profileData.deliveryLocation) {
+            setShowLocationSetup(true);
+          } else {
+            const loc = profileData.deliveryLocation;
+            setLocationData({
+              address: loc.address.split(',')[0] || "",
+              city: loc.address.split(',')[1]?.trim() || "",
+              state: loc.address.split(',')[2]?.trim().split(' ')[0] || "",
+              zipCode: loc.address.split(',')[2]?.trim().split(' ')[1] || "",
+              lat: loc.lat,
+              lng: loc.lng,
+            });
+          }
+        }
+
+        // Fetch dashboard stats
+        const statsRes = await fetch("/api/ngo/dashboard", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const statsData = await statsRes.json();
+        if (statsRes.ok) {
+          setStats({
+            totalRequests: statsData.totalRequests || 0,
+            approvedRequests: statsData.approvedRequests || 0,
+            completedDeliveries: statsData.completedRequests || 0,
+            pendingRequests: statsData.pendingRequests || 0,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch NGO data:", error);
+      } finally {
+        setLoading(false);
       }
-    } else if (!ngo.location) {
-      setShowLocationSetup(true);
-    }
+    };
+    fetchData();
   }, []);
+
+  const isApproved = ngo?.status === "approved";
 
   useEffect(() => {
     if (typeof navigator !== "undefined" && navigator.geolocation) {
@@ -105,27 +129,44 @@ export default function NGOPage() {
 
     setIsSaving(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      const token = localStorage.getItem("token");
+      const fullAddress = `${locationData.address}, ${locationData.city}, ${locationData.state} ${locationData.zipCode}`;
+      
+      const res = await fetch("/api/ngo/profile/location", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          lat: locationData.lat,
+          lng: locationData.lng,
+          address: fullAddress,
+        }),
+      });
 
-    const fullAddress = `${locationData.address}, ${locationData.city}, ${locationData.state} ${locationData.zipCode}`;
-    
-    const locationObj = {
-      lat: locationData.lat,
-      lng: locationData.lng,
-      address: fullAddress,
-    };
-
-    localStorage.setItem("ngo_location", JSON.stringify(locationObj));
-
-    setNgo({
-      ...ngo,
-      location: locationObj,
-    });
-
-    setIsSaving(false);
-    setShowLocationSetup(false);
-    alert("Delivery location saved successfully!");
+      const data = await res.json();
+      if (res.ok) {
+        setNgo({
+          ...ngo,
+          deliveryLocation: {
+            lat: locationData.lat,
+            lng: locationData.lng,
+            address: fullAddress,
+          },
+        });
+        setShowLocationSetup(false);
+        alert("Delivery location saved successfully!");
+      } else {
+        alert(data.error || "Failed to save location");
+      }
+    } catch (error) {
+      console.error("Failed to save location:", error);
+      alert("Failed to save location");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleInputChange = (
@@ -142,10 +183,14 @@ export default function NGOPage() {
       <main className="flex-1 flex flex-col h-full relative overflow-y-auto">
         <div className="p-4 md:p-8 space-y-6 md:space-y-8 max-w-7xl mx-auto w-full pb-24 md:pb-20">
           {/* Welcome Section */}
+          {loading ? (
+            <div className="text-center py-12 text-gray-400">Loading...</div>
+          ) : (
+            <>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <h2 className="text-2xl font-bold text-white">
-                Welcome, {ngo.name}! 👋
+                Welcome, {ngo?.name || "NGO"}! 👋
               </h2>
               <p className="text-gray-400 mt-1">
                 Manage your food requests and deliveries
@@ -189,7 +234,7 @@ export default function NGOPage() {
                 </div>
                 <div>
                   <p className="text-gray-400 text-sm">Total Requests</p>
-                  <p className="text-white font-bold text-2xl">{ngo.stats.totalRequests}</p>
+                  <p className="text-white font-bold text-2xl">{stats.totalRequests}</p>
                 </div>
               </div>
             </Card>
@@ -201,7 +246,7 @@ export default function NGOPage() {
                 </div>
                 <div>
                   <p className="text-gray-400 text-sm">Approved</p>
-                  <p className="text-white font-bold text-2xl">{ngo.stats.approvedRequests}</p>
+                  <p className="text-white font-bold text-2xl">{stats.approvedRequests}</p>
                 </div>
               </div>
             </Card>
@@ -213,7 +258,7 @@ export default function NGOPage() {
                 </div>
                 <div>
                   <p className="text-gray-400 text-sm">Completed</p>
-                  <p className="text-white font-bold text-2xl">{ngo.stats.completedDeliveries}</p>
+                  <p className="text-white font-bold text-2xl">{stats.completedDeliveries}</p>
                 </div>
               </div>
             </Card>
@@ -225,7 +270,7 @@ export default function NGOPage() {
                 </div>
                 <div>
                   <p className="text-gray-400 text-sm">Pending</p>
-                  <p className="text-white font-bold text-2xl">{ngo.stats.pendingRequests}</p>
+                  <p className="text-white font-bold text-2xl">{stats.pendingRequests}</p>
                 </div>
               </div>
             </Card>
@@ -277,7 +322,7 @@ export default function NGOPage() {
           </div>
 
           {/* Delivery Location */}
-          {ngo.location && (
+          {ngo?.deliveryLocation && (
             <Card className="bg-gray-900/50 border-gray-800 p-6">
               <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <Heart className="w-5 h-5 text-teal-500" />
@@ -285,9 +330,9 @@ export default function NGOPage() {
               </h3>
               <div className="bg-gray-800/50 p-4 rounded-lg">
                 <p className="text-gray-400 text-sm mb-2">All food will be delivered to:</p>
-                <p className="text-white font-medium">{ngo.location.address}</p>
+                <p className="text-white font-medium">{ngo.deliveryLocation.address}</p>
                 <p className="text-gray-500 text-sm mt-2">
-                  Coordinates: {ngo.location.lat.toFixed(6)}, {ngo.location.lng.toFixed(6)}
+                  Coordinates: {ngo.deliveryLocation.lat.toFixed(6)}, {ngo.deliveryLocation.lng.toFixed(6)}
                 </p>
               </div>
               <Button
@@ -334,7 +379,7 @@ export default function NGOPage() {
       {/* Location Setup Dialog */}
       <Dialog open={showLocationSetup} onOpenChange={(open) => {
         // Prevent closing if location is not set (first time setup)
-        if (!open && !ngo.location) {
+        if (!open && !ngo?.deliveryLocation) {
           alert("Please set your delivery location to continue");
           return;
         }
@@ -347,7 +392,7 @@ export default function NGOPage() {
               Set Delivery Location
             </DialogTitle>
             <DialogDescription className="text-gray-400">
-              {ngo.location 
+              {ngo?.deliveryLocation 
                 ? "Update your delivery location. All food donations will be delivered to this address."
                 : "Please set your delivery location. All food donations will be delivered to this address."}
             </DialogDescription>
@@ -468,6 +513,8 @@ export default function NGOPage() {
                 </div>
               </div>
             </Card>
+          )}
+            </>
           )}
         </div>
       </main>

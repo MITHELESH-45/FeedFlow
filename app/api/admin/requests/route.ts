@@ -22,7 +22,13 @@ export async function GET(request: NextRequest) {
     }
 
     const requests = await Request.find(query)
-      .populate("foodId")
+      .populate({
+        path: "foodId",
+        populate: {
+          path: "donorId",
+          select: "name email phone organization",
+        },
+      })
       .populate("ngoId", "name email phone organization deliveryLocation")
       .sort({ createdAt: -1 })
       .lean();

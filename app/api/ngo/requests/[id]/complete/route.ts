@@ -20,6 +20,9 @@ export async function POST(
 
     await dbConnect();
 
+    const body = await request.json().catch(() => ({}));
+    const { rating, feedback } = body;
+
     const foodRequest = await Request.findById(params.id)
       .populate("foodId")
       .populate("ngoId");
@@ -78,16 +81,22 @@ export async function POST(
     await createNotification(
       food?.donorId?._id.toString() || "",
       "Delivery Completed",
-      `Your donation "${food?.name}" has been successfully delivered to ${foodRequest.ngoId.name}.`,
+      `Your donation "${food?.foodType || food?.name}" has been successfully delivered to ${foodRequest.ngoId.name}.`,
       "success"
     );
 
     await createNotification(
       task.volunteerId?.toString() || "",
       "Delivery Completed",
-      `Delivery of "${food?.name}" to ${foodRequest.ngoId.name} has been confirmed.`,
+      `Delivery of "${food?.foodType || food?.name}" to ${foodRequest.ngoId.name} has been confirmed.`,
       "success"
     );
+
+    // Store feedback if provided
+    if (rating || feedback) {
+      console.log("Feedback received:", { requestId: params.id, rating, feedback });
+      // TODO: Store feedback in database if you have a feedback model
+    }
 
     const populatedRequest = await Request.findById(params.id)
       .populate("foodId")

@@ -36,17 +36,46 @@ export default function FoodMonitoringPage() {
 
   const fetchFoods = async () => {
     try {
-      const res = await fetch("/api/admin/food");
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("Please login first");
+        setIsLoading(false);
+        return;
+      }
+      
+      const res = await fetch("/api/admin/foods", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error("API Error:", errorData);
+        toast.error(errorData.error || "Failed to load food items");
+        setIsLoading(false);
+        return;
+      }
+      
       const data = await res.json();
-      if (res.ok) {
-        setFoodItems(data.foods.map((food: any) => ({
+      console.log("Fetched Foods:", data);
+      
+      if (Array.isArray(data)) {
+        setFoodItems(data.map((food: any) => ({
           ...food,
           id: food._id,
-          name: food.title,
-          donorName: food.donor?.name || "Unknown",
-          ngoName: food.ngo?.name || null,
-          volunteerName: food.volunteer?.name || null,
+          name: food.foodType,
+          description: food.description || "",
+          quantity: food.quantity,
+          unit: food.unit,
+          expiryDate: food.expiryTime,
+          donorName: food.donorId?.name || "Unknown",
+          ngoName: food.ngoName || null,
+          volunteerName: food.volunteerName || null,
         })));
+      } else {
+        console.error("Invalid data format:", data);
+        toast.error("Invalid response format");
       }
     } catch (error) {
       console.error("Failed to fetch food:", error);
@@ -217,64 +246,71 @@ export default function FoodMonitoringPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredFoods.map((food) => (
-                <TableRow key={food.id}>
-                  <TableCell className="font-medium">
-                    <div>
-                      <div>{food.name}</div>
-                      <div className="text-xs text-muted-foreground">{food.description}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      {food.donorName}
-                    </div>
-                  </TableCell>
-                  <TableCell>{food.quantity} {food.unit}</TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      {new Date(food.expiryDate).toLocaleDateString()}
-                    </div>
-                  </TableCell>
-                  <TableCell>{getStatusBadge(food.status)}</TableCell>
-                  <TableCell>
-                    {food.ngoName ? (
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
-                        {food.ngoName}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {food.volunteerName ? (
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        {food.volunteerName}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedFood(food)}
-                    >
-                      Details
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {filteredFoods.length === 0 && (
+              {isLoading ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                    No food items found
+                    Loading food items...
                   </TableCell>
                 </TableRow>
+              ) : filteredFoods.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    {foodItems.length === 0 ? "No food items uploaded yet" : "No food items match your search criteria"}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredFoods.map((food) => (
+                  <TableRow key={food.id}>
+                    <TableCell className="font-medium">
+                      <div>
+                        <div>{food.name}</div>
+                        <div className="text-xs text-muted-foreground">{food.description}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        {food.donorName}
+                      </div>
+                    </TableCell>
+                    <TableCell>{food.quantity} {food.unit}</TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {new Date(food.expiryDate).toLocaleDateString()}
+                      </div>
+                    </TableCell>
+                    <TableCell>{getStatusBadge(food.status)}</TableCell>
+                    <TableCell>
+                      {food.ngoName ? (
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4 text-muted-foreground" />
+                          {food.ngoName}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {food.volunteerName ? (
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          {food.volunteerName}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedFood(food)}
+                      >
+                        Details
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>

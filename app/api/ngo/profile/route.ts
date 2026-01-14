@@ -14,7 +14,16 @@ export async function GET(request: NextRequest) {
 
     await dbConnect();
 
-    const userObj = user.toObject();
+    // Fetch fresh user data from database to ensure we have latest status
+    const freshUser = await User.findById(user._id);
+    if (!freshUser) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      );
+    }
+
+    const userObj = freshUser.toObject();
     delete userObj.password;
 
     return NextResponse.json(userObj);

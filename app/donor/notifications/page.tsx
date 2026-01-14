@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,75 +26,56 @@ interface Notification {
   category: "donation" | "pickup" | "system" | "request";
 }
 
-const mockNotifications: Notification[] = [
-  {
-    id: "1",
-    type: "success",
-    title: "Donation Approved",
-    message: "Your donation 'Fresh Produce' has been approved and is now available for pickup.",
-    time: "2 hours ago",
-    read: false,
-    category: "donation",
-  },
-  {
-    id: "2",
-    type: "info",
-    title: "Pickup Scheduled",
-    message: "NGO 'Food Bank NYC' has scheduled a pickup for your donation on Jan 5, 2026 at 10:00 AM.",
-    time: "5 hours ago",
-    read: false,
-    category: "pickup",
-  },
-  {
-    id: "3",
-    type: "success",
-    title: "Donation Completed",
-    message: "Your donation 'Packaged Meals' was successfully picked up and delivered.",
-    time: "1 day ago",
-    read: true,
-    category: "donation",
-  },
-  {
-    id: "4",
-    type: "warning",
-    title: "Expiry Alert",
-    message: "Your donation 'Dairy Products' is expiring in 24 hours. Please ensure timely pickup.",
-    time: "1 day ago",
-    read: false,
-    category: "donation",
-  },
-  {
-    id: "5",
-    type: "info",
-    title: "New Request",
-    message: "NGO 'Community Kitchen' has requested your donation 'Fresh Vegetables'.",
-    time: "2 days ago",
-    read: true,
-    category: "request",
-  },
-  {
-    id: "6",
-    type: "alert",
-    title: "Donation Cancelled",
-    message: "Your donation 'Canned Goods' was cancelled due to quality concerns.",
-    time: "3 days ago",
-    read: true,
-    category: "donation",
-  },
-  {
-    id: "7",
-    type: "info",
-    title: "Welcome to FeedFlow",
-    message: "Thank you for joining our platform and making a difference in fighting food waste!",
-    time: "1 week ago",
-    read: true,
-    category: "system",
-  },
-];
-
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [activeTab, setActiveTab] = useState<string>("all");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch("/api/notifications", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          // Map API notifications to component format
+          const mappedNotifications: Notification[] = data.notifications.map((n: any) => ({
+            id: n._id,
+            type: n.type === "success" ? "success" : n.type === "warning" ? "warning" : n.type === "alert" ? "alert" : "info",
+            title: n.title,
+            message: n.message,
+            time: formatTime(n.createdAt),
+            read: n.read,
+            category: n.category || "system",
+          }));
+          setNotifications(mappedNotifications);
+        }
+      } catch (error) {
+        console.error("Failed to fetch notifications:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchNotifications();
+  }, []);
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -124,14 +105,41 @@ export default function NotificationsPage() {
     }
   };
 
-  const markAsRead = (id: string) => {
-    setNotifications(
-      notifications.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
+  const markAsRead = async (id: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      await fetch(`/api/notifications/${id}/read`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setNotifications(
+        notifications.map((n) => (n.id === id ? { ...n, read: true } : n))
+      );
+    } catch (error) {
+      console.error("Failed to mark as read:", error);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, read: true })));
+  const markAllAsRead = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
+      await Promise.all(
+        unreadIds.map(id =>
+          fetch(`/api/notifications/${id}/read`, {
+            method: "PATCH",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          })
+        )
+      );
+      setNotifications(notifications.map((n) => ({ ...n, read: true })));
+    } catch (error) {
+      console.error("Failed to mark all as read:", error);
+    }
   };
 
   const deleteNotification = (id: string) => {
@@ -241,7 +249,11 @@ export default function NotificationsPage() {
             </TabsList>
 
             <TabsContent value={activeTab} className="mt-6 space-y-3">
-              {filteredNotifications.length === 0 ? (
+              {loading ? (
+                <Card className="bg-gray-900/30 border-gray-800 p-12 text-center">
+                  <div className="animate-pulse text-gray-400">Loading notifications...</div>
+                </Card>
+              ) : filteredNotifications.length === 0 ? (
                 <Card className="bg-gray-900/30 border-gray-800 p-12 text-center">
                   <Bell className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                   <h3 className="text-xl font-semibold text-gray-400 mb-2">

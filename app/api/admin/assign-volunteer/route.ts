@@ -74,17 +74,18 @@ export async function POST(request: NextRequest) {
     });
 
     // Create notifications
+    const foodType = foodRequest.foodId.foodType || foodRequest.foodId.name || "food";
     await createNotification(
       volunteer._id.toString(),
       "New Task Assigned",
-      `You have been assigned to deliver "${foodRequest.foodId.name}" to ${foodRequest.ngoId.name}.`,
+      `You have been assigned to deliver "${foodType}" to ${foodRequest.ngoId.name}.`,
       "info"
     );
 
     await createNotification(
       foodRequest.ngoId._id.toString(),
       "Volunteer Assigned",
-      `A volunteer has been assigned to deliver "${foodRequest.foodId.name}" to your location.`,
+      `A volunteer has been assigned to deliver "${foodType}" to your location.`,
       "success"
     );
 

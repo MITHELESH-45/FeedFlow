@@ -6,6 +6,7 @@ export interface User {
   id: string;
   name: string;
   role: UserRole;
+  status?: "pending" | "approved" | "rejected";
 }
 
 export interface Notification {

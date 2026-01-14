@@ -65,6 +65,7 @@ export default function LoginPage() {
         id: data.user._id || data.user.id,
         name: data.user.name,
         role: data.user.role,
+        status: data.user.status, // Include status for NGO
       });
 
       // Route based on role

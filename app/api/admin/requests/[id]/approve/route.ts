@@ -54,18 +54,18 @@ export async function POST(
     await Food.findByIdAndUpdate(foodRequest.foodId, { status: "approved" });
 
     // Create notifications
+    const food = await Food.findById(foodRequest.foodId).populate("donorId").lean();
     await createNotification(
       foodRequest.ngoId._id.toString(),
       "Food Request Approved",
-      `Your request for "${foodRequest.foodId.name}" has been approved! A volunteer will be assigned soon.`,
+      `Your request for "${food?.foodType || food?.name || 'food'}" has been approved! A volunteer will be assigned soon.`,
       "success"
     );
 
-    const food = await Food.findById(foodRequest.foodId).populate("donorId").lean();
     await createNotification(
       food?.donorId?._id.toString() || "",
       "Food Request Approved",
-      `An NGO's request for your donation "${food?.name}" has been approved.`,
+      `An NGO's request for your donation "${food?.foodType || food?.name || 'food'}" has been approved.`,
       "info"
     );
 

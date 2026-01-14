@@ -49,10 +49,32 @@ export default function NGOApprovalPage() {
 
   const fetchNgos = async () => {
     try {
-      const res = await fetch("/api/admin/users?role=ngo");
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("Please login first");
+        setIsLoading(false);
+        return;
+      }
+      
+      const res = await fetch("/api/admin/ngos", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error("API Error:", errorData);
+        toast.error(errorData.error || "Failed to load NGOs");
+        setIsLoading(false);
+        return;
+      }
+      
       const data = await res.json();
-      if (res.ok) {
-        setNgos(data.users.map((u: any) => ({
+      console.log("Fetched NGOs:", data);
+      
+      if (Array.isArray(data)) {
+        setNgos(data.map((u: any) => ({
           id: u._id,
           name: u.name,
           email: u.email,
@@ -60,9 +82,12 @@ export default function NGOApprovalPage() {
           address: u.deliveryLocation?.address || "Unknown",
           location: u.deliveryLocation || { lat: 0, lng: 0 },
           registrationNumber: u.organization || "N/A",
-          status: u.status,
+          status: u.status || "pending",
           registeredAt: u.createdAt,
         })));
+      } else {
+        console.error("Invalid data format:", data);
+        toast.error("Invalid response format");
       }
     } catch (error) {
       console.error("Failed to fetch NGOs:", error);
@@ -81,10 +106,13 @@ export default function NGOApprovalPage() {
 
   const handleApprove = async (ngoId: string) => {
     try {
-      const res = await fetch("/api/admin/users", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: ngoId, status: "approved" }),
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/admin/ngos/${ngoId}/approve`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
       });
       
       if (res.ok) {
@@ -92,7 +120,8 @@ export default function NGOApprovalPage() {
         fetchNgos();
         setSelectedNGO(null);
       } else {
-        toast.error("Failed to approve NGO");
+        const data = await res.json();
+        toast.error(data.error || "Failed to approve NGO");
       }
     } catch (error) {
       toast.error("Error approving NGO");
@@ -101,10 +130,13 @@ export default function NGOApprovalPage() {
 
   const handleReject = async (ngoId: string) => {
     try {
-      const res = await fetch("/api/admin/users", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: ngoId, status: "rejected" }),
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/admin/ngos/${ngoId}/reject`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
       });
       
       if (res.ok) {
@@ -112,7 +144,8 @@ export default function NGOApprovalPage() {
         fetchNgos();
         setSelectedNGO(null);
       } else {
-        toast.error("Failed to reject NGO");
+        const data = await res.json();
+        toast.error(data.error || "Failed to reject NGO");
       }
     } catch (error) {
       toast.error("Error rejecting NGO");
@@ -246,37 +279,44 @@ export default function NGOApprovalPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredNGOs.map((ngo) => (
-                <TableRow key={ngo.id}>
-                  <TableCell className="font-medium">{ngo.name}</TableCell>
-                  <TableCell>{ngo.registrationNumber}</TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      <div>{ngo.email}</div>
-                      <div className="text-muted-foreground">{ngo.phone}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {new Date(ngo.registeredAt).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>{getStatusBadge(ngo.status)}</TableCell>
-                  <TableCell>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedNGO(ngo)}
-                    >
-                      View Details
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {filteredNGOs.length === 0 && (
+              {isLoading ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    No NGOs found
+                    Loading NGOs...
                   </TableCell>
                 </TableRow>
+              ) : filteredNGOs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    {ngos.length === 0 ? "No NGOs registered yet" : "No NGOs match your search criteria"}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredNGOs.map((ngo) => (
+                  <TableRow key={ngo.id}>
+                    <TableCell className="font-medium">{ngo.name}</TableCell>
+                    <TableCell>{ngo.registrationNumber}</TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        <div>{ngo.email}</div>
+                        <div className="text-muted-foreground">{ngo.phone}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {new Date(ngo.registeredAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>{getStatusBadge(ngo.status)}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedNGO(ngo)}
+                      >
+                        View Details
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>

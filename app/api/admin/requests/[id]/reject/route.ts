@@ -46,10 +46,11 @@ export async function POST(
     }
 
     // Create notification
+    const food = await Food.findById(foodRequest.foodId).lean();
     await createNotification(
       foodRequest.ngoId._id.toString(),
       "Food Request Rejected",
-      reason || `Your request for "${foodRequest.foodId.name}" has been rejected.`,
+      reason || `Your request for "${food?.foodType || food?.name || 'food'}" has been rejected.`,
       "error"
     );
 

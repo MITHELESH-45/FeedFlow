@@ -22,8 +22,20 @@ export async function GET(request: NextRequest) {
     }
 
     const tasks = await Task.find(query)
-      .populate("foodId")
-      .populate("requestId")
+      .populate({
+        path: "foodId",
+        populate: {
+          path: "donorId",
+          select: "name email phone",
+        },
+      })
+      .populate({
+        path: "requestId",
+        populate: {
+          path: "ngoId",
+          select: "name email phone deliveryLocation",
+        },
+      })
       .populate("volunteerId", "name email phone")
       .sort({ createdAt: -1 })
       .lean();

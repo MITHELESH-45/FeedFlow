@@ -14,15 +14,25 @@ export async function POST(request: NextRequest) {
     }
     const { user } = authResult;
 
+    await dbConnect();
+
+    // Fetch fresh user data from database to ensure we have latest status
+    const User = (await import("@/lib/models/User")).default;
+    const freshUser = await User.findById(user._id);
+    if (!freshUser) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      );
+    }
+
     // Check if NGO is approved
-    if (user.status !== "approved") {
+    if (freshUser.status !== "approved") {
       return NextResponse.json(
         { error: "Your NGO account must be approved by admin before requesting food" },
         { status: 403 }
       );
     }
-
-    await dbConnect();
 
     const body = await request.json();
     const { foodId, quantity } = body;
@@ -60,7 +70,7 @@ export async function POST(request: NextRequest) {
     // Check if NGO already has a pending/approved request for this food
     const existingRequest = await Request.findOne({
       foodId,
-      ngoId: user._id,
+      ngoId: freshUser._id,
       status: { $in: ["pending", "approved"] },
     });
 
@@ -74,9 +84,17 @@ export async function POST(request: NextRequest) {
     // Create request
     const foodRequest = await Request.create({
       foodId,
-      ngoId: user._id,
+      ngoId: freshUser._id,
       quantity,
       status: "pending",
+    });
+
+    console.log("Request created:", {
+      requestId: foodRequest._id,
+      foodId: foodId,
+      ngoId: freshUser._id,
+      quantity: quantity,
+      status: foodRequest.status
     });
 
     // Update food status
@@ -84,23 +102,27 @@ export async function POST(request: NextRequest) {
 
     // Create notifications
     await createNotification(
-      user._id,
+      freshUser._id.toString(),
       "Food Request Submitted",
-      `Your request for ${food.name} has been submitted and is pending admin approval.`,
+      `Your request for ${food.foodType || food.name} has been submitted and is pending admin approval.`,
       "info"
     );
 
     // Notify donor (if we have donor ID)
-    await createNotification(
-      food.donorId.toString(),
-      "Food Request Received",
-      `An NGO has requested ${quantity} ${food.unit} of your donation "${food.name}".`,
-      "info"
-    );
+    if (food.donorId) {
+      await createNotification(
+        food.donorId.toString(),
+        "Food Request Received",
+        `An NGO has requested ${quantity} ${food.unit} of your donation "${food.foodType || food.name}".`,
+        "info"
+      );
+    }
 
     const populatedRequest = await Request.findById(foodRequest._id)
       .populate("foodId")
       .populate("ngoId", "name email phone organization");
+
+    console.log("Populated request:", populatedRequest);
 
     return NextResponse.json(populatedRequest, { status: 201 });
   } catch (error: any) {
@@ -133,11 +155,31 @@ export async function GET(request: NextRequest) {
 
     const requests = await Request.find(query)
       .sort({ createdAt: -1 })
-      .populate("foodId")
-      .populate("ngoId", "name email phone organization")
+      .populate({
+        path: "foodId",
+        populate: {
+          path: "donorId",
+          select: "name email phone organization",
+        },
+      })
+      .populate("ngoId", "name email phone organization deliveryLocation")
       .lean();
 
-    return NextResponse.json(requests);
+    // Enrich with task information (volunteer details)
+    const Task = (await import("@/lib/models/Task")).default;
+    const enrichedRequests = await Promise.all(
+      requests.map(async (req: any) => {
+        const task = await Task.findOne({ requestId: req._id })
+          .populate("volunteerId", "name email phone")
+          .lean();
+        return {
+          ...req,
+          task: task || null,
+        };
+      })
+    );
+
+    return NextResponse.json(enrichedRequests);
   } catch (error: any) {
     console.error("Get requests error:", error);
     return NextResponse.json(

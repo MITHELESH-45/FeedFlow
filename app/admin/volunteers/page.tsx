@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -68,109 +68,133 @@ interface Volunteer {
 export default function VolunteerAssignmentPage() {
   const [selectedFood, setSelectedFood] = useState<ApprovedFood | null>(null);
   const [selectedVolunteer, setSelectedVolunteer] = useState<string>("");
+  const [assigning, setAssigning] = useState(false);
 
-  // Mock approved foods awaiting volunteer assignment
-  const [approvedFoods, setApprovedFoods] = useState<ApprovedFood[]>([
-    {
-      id: "F001",
-      foodName: "Fresh Vegetables",
-      foodDescription: "Assorted fresh vegetables",
-      quantity: 50,
-      unit: "kg",
-      donorName: "John Doe",
-      donorPhone: "+1 234-567-8900",
-      donorAddress: "123 Main St, Downtown",
-      pickupLocation: { lat: 40.7128, lng: -74.0060 },
-      ngoId: "N001",
-      ngoName: "Hope Foundation",
-      ngoPhone: "+1 234-567-8901",
-      ngoAddress: "456 Community Ave, Uptown",
-      ngoLocation: { lat: 40.7580, lng: -73.9855 },
-      approvedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-      volunteerAssigned: false
-    },
-    {
-      id: "F002",
-      foodName: "Bread",
-      foodDescription: "Fresh bread from bakery",
-      quantity: 20,
-      unit: "loaves",
-      donorName: "Sarah Smith",
-      donorPhone: "+1 234-567-8902",
-      donorAddress: "789 Bakery Lane, Midtown",
-      pickupLocation: { lat: 40.7489, lng: -73.9680 },
-      ngoId: "N002",
-      ngoName: "Shelter Aid",
-      ngoPhone: "+1 234-567-8903",
-      ngoAddress: "321 Shelter St, Uptown",
-      ngoLocation: { lat: 40.7580, lng: -73.9855 },
-      approvedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-      volunteerAssigned: false
-    },
-  ]);
+  const [approvedFoods, setApprovedFoods] = useState<ApprovedFood[]>([]);
+  const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock volunteers
-  const volunteers: Volunteer[] = [
-    {
-      id: "V001",
-      name: "Bob Johnson",
-      phone: "+1 234-567-9000",
-      email: "bob@volunteer.com",
-      completedDeliveries: 45,
-      rating: 4.8,
-      available: true
-    },
-    {
-      id: "V002",
-      name: "Alice Williams",
-      phone: "+1 234-567-9001",
-      email: "alice@volunteer.com",
-      completedDeliveries: 32,
-      rating: 4.9,
-      available: true
-    },
-    {
-      id: "V003",
-      name: "Charlie Brown",
-      phone: "+1 234-567-9002",
-      email: "charlie@volunteer.com",
-      completedDeliveries: 28,
-      rating: 4.7,
-      available: true
-    },
-    {
-      id: "V004",
-      name: "Diana Prince",
-      phone: "+1 234-567-9003",
-      email: "diana@volunteer.com",
-      completedDeliveries: 51,
-      rating: 5.0,
-      available: false
-    },
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        
+        // Fetch approved requests (foods awaiting volunteer assignment)
+        const requestsRes = await fetch("/api/admin/requests?status=approved", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const requestsData = await requestsRes.json();
+        if (requestsRes.ok && Array.isArray(requestsData)) {
+          // Check if tasks already exist
+          const taskRes = await fetch("/api/admin/deliveries", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          const tasksData = await taskRes.json();
+          const existingRequestIds = new Set(
+            (Array.isArray(tasksData) ? tasksData : []).map((t: any) => t.requestId?._id?.toString() || t.requestId?.toString())
+          );
+
+          const foods = requestsData.map((r: any) => ({
+            id: r._id,
+            foodId: r.foodId?._id || r.foodId,
+            foodName: r.foodId?.foodType || "Unknown",
+            foodDescription: r.foodId?.description || "",
+            quantity: r.quantity || r.foodId?.quantity || 0,
+            unit: r.foodId?.unit || "",
+            donorName: r.foodId?.donorId?.name || "Unknown",
+            donorPhone: r.foodId?.donorId?.phone || "",
+            donorAddress: r.foodId?.pickupLocation?.address || "",
+            pickupLocation: r.foodId?.pickupLocation || { lat: 0, lng: 0 },
+            ngoId: r.ngoId?._id || r.ngoId,
+            ngoName: r.ngoId?.name || "Unknown",
+            ngoPhone: r.ngoId?.phone || "",
+            ngoAddress: r.ngoId?.deliveryLocation?.address || "",
+            ngoLocation: r.ngoId?.deliveryLocation || { lat: 0, lng: 0 },
+            approvedAt: r.updatedAt || r.createdAt,
+            volunteerAssigned: existingRequestIds.has(r._id.toString()),
+          }));
+          setApprovedFoods(foods);
+        }
+
+        // Fetch volunteers
+        const volunteersRes = await fetch("/api/admin/volunteers", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const volunteersData = await volunteersRes.json();
+        if (volunteersRes.ok) {
+          const mappedVolunteers: Volunteer[] = volunteersData.map((v: any) => ({
+            id: v._id,
+            name: v.name,
+            phone: v.phone || "",
+            email: v.email,
+            completedDeliveries: v.stats?.completedTasks || 0,
+            rating: 5.0, // Default rating
+            available: (v.stats?.activeTasks || 0) === 0,
+          }));
+          setVolunteers(mappedVolunteers);
+        }
+      } catch (error) {
+        console.error("Failed to fetch data:", error);
+        toast.error("Failed to load data");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const availableVolunteers = volunteers.filter(v => v.available);
 
-  const handleAssignVolunteer = () => {
+  const handleAssignVolunteer = async () => {
     if (!selectedFood || !selectedVolunteer) return;
 
     const volunteer = volunteers.find(v => v.id === selectedVolunteer);
     if (!volunteer) return;
 
-    setApprovedFoods(approvedFoods.map(food => 
-      food.id === selectedFood.id 
-        ? { 
-            ...food, 
-            volunteerAssigned: true,
-            assignedVolunteerId: volunteer.id,
-            assignedVolunteerName: volunteer.name
-          } 
-        : food
-    ));
-
-    toast.success(`Task assigned to ${volunteer.name}`);
-    setSelectedFood(null);
-    setSelectedVolunteer("");
+    setAssigning(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/admin/assign-volunteer", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          requestId: selectedFood.id,
+          volunteerId: selectedVolunteer,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setApprovedFoods(approvedFoods.map(food => 
+          food.id === selectedFood.id 
+            ? { 
+                ...food, 
+                volunteerAssigned: true,
+                assignedVolunteerId: volunteer.id,
+                assignedVolunteerName: volunteer.name
+              } 
+            : food
+        ));
+        toast.success(`Task assigned to ${volunteer.name}`);
+        setSelectedFood(null);
+        setSelectedVolunteer("");
+      } else {
+        toast.error(data.error || "Failed to assign volunteer");
+      }
+    } catch (error) {
+      console.error("Failed to assign volunteer:", error);
+      toast.error("Failed to assign volunteer");
+    } finally {
+      setAssigning(false);
+    }
   };
 
   const pendingAssignments = approvedFoods.filter(f => !f.volunteerAssigned).length;
@@ -225,19 +249,22 @@ export default function VolunteerAssignmentPage() {
           <CardTitle>Approved Food Items</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Food Item</TableHead>
-                <TableHead>Donor (Pickup)</TableHead>
-                <TableHead>NGO (Drop)</TableHead>
-                <TableHead>Approved At</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {approvedFoods.map((food) => (
+          {loading ? (
+            <div className="p-8 text-center text-muted-foreground">Loading...</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Food Item</TableHead>
+                  <TableHead>Donor (Pickup)</TableHead>
+                  <TableHead>NGO (Drop)</TableHead>
+                  <TableHead>Approved At</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {approvedFoods.map((food) => (
                 <TableRow key={food.id}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
@@ -297,16 +324,17 @@ export default function VolunteerAssignmentPage() {
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))}
-              {approvedFoods.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    No approved food items awaiting assignment
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                ))}
+                {approvedFoods.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      No approved food items awaiting assignment
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
@@ -490,10 +518,10 @@ export default function VolunteerAssignmentPage() {
                 </Button>
                 <Button
                   onClick={handleAssignVolunteer}
-                  disabled={!selectedVolunteer}
+                  disabled={!selectedVolunteer || assigning}
                 >
                   <CheckCircle className="mr-2 h-4 w-4" />
-                  Assign Volunteer
+                  {assigning ? "Assigning..." : "Assign Volunteer"}
                 </Button>
               </>
             ) : (

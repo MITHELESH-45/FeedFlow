@@ -36,26 +36,30 @@ export async function GET(
 
     // Enrich with donor and NGO details
     const food = await Food.findById(task.foodId).populate("donorId", "name phone").lean();
-    const request = await Request.findById(task.requestId).populate("ngoId", "name phone deliveryLocation").lean();
+    const foodRequest = await Request.findById(task.requestId).populate("ngoId", "name phone deliveryLocation").lean();
 
     const enrichedTask = {
       ...task,
-      foodName: food?.name,
-      foodDescription: food?.description,
-      quantity: food?.quantity,
-      unit: food?.unit,
+      foodName: food?.foodType || food?.name,
+      foodDescription: food?.description || "",
+      quantity: food?.quantity || 0,
+      unit: food?.unit || "",
+      preparedTime: food?.preparedTime,
+      expiryTime: food?.expiryTime,
+      imageUrl: food?.imageUrl,
       donorId: food?.donorId?._id,
       donorName: food?.donorId?.name,
       donorPhone: food?.donorId?.phone,
       donorAddress: food?.pickupLocation?.address || "",
       donorLat: food?.pickupLocation?.lat,
       donorLng: food?.pickupLocation?.lng,
-      ngoId: request?.ngoId?._id,
-      ngoName: request?.ngoId?.name,
-      ngoPhone: request?.ngoId?.phone,
-      ngoAddress: request?.ngoId?.deliveryLocation?.address || "",
-      ngoLat: request?.ngoId?.deliveryLocation?.lat,
-      ngoLng: request?.ngoId?.deliveryLocation?.lng,
+      ngoId: foodRequest?.ngoId?._id,
+      ngoName: foodRequest?.ngoId?.name,
+      ngoPhone: foodRequest?.ngoId?.phone,
+      ngoAddress: foodRequest?.ngoId?.deliveryLocation?.address || "",
+      ngoLat: foodRequest?.ngoId?.deliveryLocation?.lat,
+      ngoLng: foodRequest?.ngoId?.deliveryLocation?.lng,
+      requestedQuantity: foodRequest?.quantity || 0,
     };
 
     return NextResponse.json(enrichedTask);
