@@ -30,107 +30,108 @@ export default function VolunteerProfilePage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-6 md:py-8 max-w-4xl">
-      <div className="mb-6 md:mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold mb-2">Profile</h1>
-        <p className="text-sm md:text-base text-muted-foreground">
+    <div className="min-h-screen bg-[#0a0a0a] pb-24 md:pb-8">
+      <div className="p-4 md:p-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Profile</h1>
+        <p className="text-gray-400">
           Manage your volunteer profile and view your statistics
         </p>
       </div>
 
-      {/* Profile Info Card */}
-      <Card className="mb-6">
-        <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-            <div className="flex items-start gap-4">
-              <div className="h-16 w-16 md:h-20 md:w-20 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                <User className="h-8 w-8 md:h-10 md:w-10 text-primary" />
-              </div>
-              <div>
-                <CardTitle className="text-xl md:text-2xl mb-1">
-                  {user?.name || "Volunteer"}
-                </CardTitle>
-                <Badge variant="secondary" className="mb-2">
-                  <Package className="h-3 w-3 mr-1" />
-                  Volunteer
-                </Badge>
-                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
-                  <span>Joined {new Date(profile.joinedDate).toLocaleDateString()}</span>
+      <div className="px-4 md:px-6 space-y-6 max-w-4xl mx-auto">
+        {/* Profile Info Card */}
+        <Card className="bg-gray-900/50 border-gray-800">
+          <CardHeader>
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+              <div className="flex items-start gap-4">
+                <div className="h-16 w-16 md:h-20 md:w-20 bg-teal-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                  <User className="h-8 w-8 md:h-10 md:w-10 text-teal-500" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl md:text-2xl text-white mb-1">
+                    {user?.name || "Volunteer"}
+                  </CardTitle>
+                  <Badge className="bg-teal-500/20 text-teal-500 border-teal-500/30 mb-2">
+                    <Package className="h-3 w-3 mr-1" />
+                    Volunteer
+                  </Badge>
+                  <div className="flex items-center gap-1 text-sm text-gray-400">
+                    <Calendar className="h-4 w-4" />
+                    <span>Joined {new Date(profile.joinedDate).toLocaleDateString()}</span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-center gap-3">
-              <Mail className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-              <div>
-                <div className="text-sm text-muted-foreground">Email</div>
-                <div className="font-medium">{profile.email}</div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center gap-3">
+                <Mail className="h-5 w-5 text-gray-500 flex-shrink-0" />
+                <div>
+                  <div className="text-sm text-gray-400">Email</div>
+                  <div className="font-medium text-white">{profile.email}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Phone className="h-5 w-5 text-gray-500 flex-shrink-0" />
+                <div>
+                  <div className="text-sm text-gray-400">Phone</div>
+                  <div className="font-medium text-white">{profile.phone}</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 md:col-span-2">
+                <MapPin className="h-5 w-5 text-gray-500 flex-shrink-0 mt-1" />
+                <div>
+                  <div className="text-sm text-gray-400">Address</div>
+                  <div className="font-medium text-white">{profile.address}</div>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <Phone className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-              <div>
-                <div className="text-sm text-muted-foreground">Phone</div>
-                <div className="font-medium">{profile.phone}</div>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 md:col-span-2">
-              <MapPin className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
-              <div>
-                <div className="text-sm text-muted-foreground">Address</div>
-                <div className="font-medium">{profile.address}</div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Statistics Card */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Award className="h-5 w-5" />
-            Delivery Statistics
-          </CardTitle>
-          <CardDescription>Your performance and achievements</CardDescription>
-        </CardHeader>
+        {/* Statistics Card */}
+        <Card className="bg-gray-900/50 border-gray-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-white">
+              <Award className="h-5 w-5 text-teal-500" />
+              Delivery Statistics
+            </CardTitle>
+            <CardDescription className="text-gray-400">Your performance and achievements</CardDescription>
+          </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="text-3xl md:text-4xl font-bold text-green-600 mb-1">
+            <div className="text-center p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+              <div className="text-3xl md:text-4xl font-bold text-green-500 mb-1">
                 {profile.completedDeliveries}
               </div>
-              <div className="text-sm text-muted-foreground">Completed Deliveries</div>
+              <div className="text-sm text-gray-400">Completed Deliveries</div>
             </div>
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <div className="text-3xl md:text-4xl font-bold text-blue-600 mb-1">
+            <div className="text-center p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+              <div className="text-3xl md:text-4xl font-bold text-blue-500 mb-1">
                 {profile.activeDeliveries}
               </div>
-              <div className="text-sm text-muted-foreground">Active Deliveries</div>
+              <div className="text-sm text-gray-400">Active Deliveries</div>
             </div>
-            <div className="text-center p-4 bg-purple-50 rounded-lg">
-              <div className="text-3xl md:text-4xl font-bold text-purple-600 mb-1">
+            <div className="text-center p-4 bg-teal-500/10 border border-teal-500/30 rounded-lg">
+              <div className="text-3xl md:text-4xl font-bold text-teal-500 mb-1">
                 100%
               </div>
-              <div className="text-sm text-muted-foreground">Success Rate</div>
+              <div className="text-sm text-gray-400">Success Rate</div>
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Quick Actions */}
-      <Card className="mb-6">
+      <Card className="bg-gray-900/50 border-gray-800">
         <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
+          <CardTitle className="text-white">Quick Actions</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <Button
             variant="outline"
-            className="w-full justify-start"
+            className="w-full justify-start bg-gray-800 border-gray-700 text-white hover:bg-gray-700 hover:text-white"
             onClick={() => router.push("/volunteer")}
           >
             <Package className="mr-2 h-4 w-4" />
@@ -138,7 +139,7 @@ export default function VolunteerProfilePage() {
           </Button>
           <Button
             variant="outline"
-            className="w-full justify-start"
+            className="w-full justify-start bg-gray-800 border-gray-700 text-white hover:bg-gray-700 hover:text-white"
             onClick={() => router.push("/volunteer/history")}
           >
             <Calendar className="mr-2 h-4 w-4" />
@@ -146,7 +147,7 @@ export default function VolunteerProfilePage() {
           </Button>
           <Button
             variant="outline"
-            className="w-full justify-start"
+            className="w-full justify-start bg-gray-800 border-gray-700 text-white hover:bg-gray-700 hover:text-white"
             onClick={() => router.push("/volunteer/notifications")}
           >
             <Award className="mr-2 h-4 w-4" />
@@ -156,19 +157,19 @@ export default function VolunteerProfilePage() {
       </Card>
 
       {/* Logout */}
-      <Card className="border-red-200">
+      <Card className="bg-gray-900/50 border-red-500/50">
         <CardContent className="py-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h3 className="font-semibold mb-1">Logout</h3>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="font-semibold text-white mb-1">Logout</h3>
+              <p className="text-sm text-gray-400">
                 Sign out of your volunteer account
               </p>
             </div>
             <Button
               variant="destructive"
               onClick={handleLogout}
-              className="w-full md:w-auto"
+              className="w-full md:w-auto bg-red-500 hover:bg-red-600"
             >
               <LogOut className="mr-2 h-4 w-4" />
               Logout
@@ -176,6 +177,7 @@ export default function VolunteerProfilePage() {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

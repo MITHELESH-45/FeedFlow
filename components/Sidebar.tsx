@@ -13,6 +13,11 @@ import {
   Package,
   Search,
   Heart,
+  Building2,
+  Truck,
+  ClipboardList,
+  BarChart3,
+  Users,
 } from "lucide-react";
 
 const donorNavigation = [
@@ -40,10 +45,12 @@ const volunteerNavigation = [
 
 const adminNavigation = [
   { name: "Dashboard", href: "/admin", icon: LayoutGrid },
-  { name: "Manage NGOs", href: "/admin/ngos", icon: Heart },
-  { name: "Manage Volunteers", href: "/admin/volunteers", icon: User },
-  { name: "Reports", href: "/reports", icon: Clock },
-  { name: "Profile", href: "/admin/profile", icon: User },
+  { name: "Manage NGOs", href: "/admin/ngos", icon: Building2 },
+  { name: "Food Monitoring", href: "/admin/food", icon: Package },
+  { name: "Review Requests", href: "/admin/requests", icon: ClipboardList },
+  { name: "Assign Volunteers", href: "/admin/volunteers", icon: Users },
+  { name: "Track Deliveries", href: "/admin/deliveries", icon: Truck },
+  { name: "Reports", href: "/admin/reports", icon: BarChart3 },
 ];
 
 export function Sidebar() {
