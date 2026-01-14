@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Search, MapPin, User, Building2, Package, Truck, CheckCircle, Clock } from "lucide-react";
 import dynamic from "next/dynamic";
-import { mockTasks } from "@/mock/tasks";
+import { toast } from "sonner";
 
 // Dynamic import of map component (read-only)
 const ReadOnlyMap = dynamic(() => import("@/components/ReadOnlyMap"), { ssr: false });
@@ -31,8 +31,54 @@ export default function DeliveryMonitoringPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDelivery, setSelectedDelivery] = useState<any>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [deliveries, setDeliveries] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const deliveries = mockTasks;
+  useEffect(() => {
+    fetchDeliveries();
+  }, []);
+
+  const fetchDeliveries = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/admin/deliveries", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setDeliveries(
+          data.map((task: any) => ({
+            ...task,
+            id: task._id,
+            foodName: task.foodId?.foodType || "Unknown Food",
+            foodDescription: task.foodId?.description || "",
+            quantity: task.foodId?.quantity || 0,
+            unit: task.foodId?.unit || "",
+            volunteerName: task.volunteerId?.name || "Unassigned",
+            ngoName: task.requestId?.ngoId?.name || "Unknown NGO",
+            ngoPhone: task.requestId?.ngoId?.phone || "",
+            ngoAddress: task.requestId?.ngoId?.deliveryLocation?.address || "",
+            ngoLat: task.requestId?.ngoId?.deliveryLocation?.lat || 0,
+            ngoLng: task.requestId?.ngoId?.deliveryLocation?.lng || 0,
+            donorName: task.foodId?.donorId?.name || "Unknown Donor",
+            donorPhone: task.foodId?.donorId?.phone || "",
+            donorAddress: task.foodId?.pickupLocation?.address || "",
+            donorLat: task.foodId?.pickupLocation?.lat || 0,
+            donorLng: task.foodId?.pickupLocation?.lng || 0,
+          }))
+        );
+      } else {
+        toast.error(data.error || "Failed to load deliveries");
+      }
+    } catch (error) {
+      console.error("Failed to fetch deliveries:", error);
+      toast.error("Failed to load deliveries");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const filteredDeliveries = deliveries.filter((delivery) => {
     const matchesSearch = 

@@ -6,16 +6,28 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Package, MapPin, CheckCircle2, Clock, Calendar, Award, Download, Search, ChevronDown, Filter, Heart, Users } from "lucide-react";
-import { mockTasks, Task } from "@/mock/tasks";
 import { useAppStore } from "@/lib/store";
 import { AchievementBadges } from "@/components/AchievementBadges";
 import { TaskHistoryFilters } from "@/components/TaskHistoryFilters";
 import { DeliveryChart } from "@/components/DeliveryChart";
 
+interface Task {
+  _id: string;
+  foodId: any;
+  requestId: any;
+  status: string;
+  assignedAt?: string;
+  acceptedAt?: string;
+  pickedUpAt?: string;
+  reachedNgoAt?: string;
+  completedAt?: string;
+  createdAt: string;
+}
+
 export default function VolunteerHistoryPage() {
   const router = useRouter();
   const user = useAppStore((state) => state.user);
-  const [completedTasks, setCompletedTasks] = useState<Task[]>([]);
+  const [completedTasks, setCompletedTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
@@ -23,16 +35,56 @@ export default function VolunteerHistoryPage() {
   const [statusFilter, setStatusFilter] = useState("all");
 
   useEffect(() => {
-    const tasks = mockTasks.filter(
-      (task) => task.volunteerId === user?.id && task.status === "completed"
-    );
-    tasks.sort((a, b) => {
-      if (!a.completedAt || !b.completedAt) return 0;
-      return new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime();
-    });
-    setCompletedTasks(tasks);
-    setLoading(false);
-  }, [user]);
+    const fetchTasks = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch("/api/volunteer/tasks", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          const tasks = data.tasks
+            .filter((task: Task) => task.status === "completed")
+            .map((task: Task) => ({
+              id: task._id,
+              foodName: task.foodId?.foodType || "Unknown",
+              foodDescription: task.foodId?.description || "",
+              quantity: task.foodId?.quantity || 0,
+              unit: task.foodId?.unit || "",
+              donorName: task.foodId?.donorId?.name || "Unknown",
+              donorPhone: task.foodId?.donorId?.phone || "",
+              donorAddress: task.foodId?.pickupLocation?.address || "",
+              donorLat: task.foodId?.pickupLocation?.lat || 0,
+              donorLng: task.foodId?.pickupLocation?.lng || 0,
+              ngoName: task.requestId?.ngoId?.name || "Unknown",
+              ngoPhone: task.requestId?.ngoId?.phone || "",
+              ngoAddress: task.requestId?.ngoId?.deliveryLocation?.address || "",
+              ngoLat: task.requestId?.ngoId?.deliveryLocation?.lat || 0,
+              ngoLng: task.requestId?.ngoId?.deliveryLocation?.lng || 0,
+              status: task.status,
+              assignedAt: task.assignedAt,
+              acceptedAt: task.acceptedAt,
+              pickedUpAt: task.pickedUpAt,
+              reachedNgoAt: task.reachedNgoAt,
+              completedAt: task.completedAt,
+              createdAt: task.createdAt,
+            }));
+          tasks.sort((a: any, b: any) => {
+            if (!a.completedAt || !b.completedAt) return 0;
+            return new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime();
+          });
+          setCompletedTasks(tasks);
+        }
+      } catch (error) {
+        console.error("Failed to fetch tasks:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTasks();
+  }, []);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);

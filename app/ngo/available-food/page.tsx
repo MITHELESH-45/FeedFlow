@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,54 +16,86 @@ import {
   ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
-
-// Mock available food data
-const availableFoods = [
-  {
-    id: "1",
-    donorId: "d1",
-    donorName: "Restaurant ABC",
-    foodType: "Cooked Meals",
-    quantity: 50,
-    unit: "meals",
-    preparedTime: "2024-01-15T10:00:00",
-    expiryTime: "2024-01-15T18:00:00",
-    pickupLocation: {
-      lat: 40.7580,
-      lng: -73.9855,
-      address: "Times Square, New York, NY",
-    },
-    imageUrl: "/placeholder-food.jpg",
-    status: "available",
-  },
-  {
-    id: "2",
-    donorId: "d2",
-    donorName: "Grocery Store XYZ",
-    foodType: "Packaged Food",
-    quantity: 30,
-    unit: "kg",
-    preparedTime: "2024-01-15T08:00:00",
-    expiryTime: "2024-01-20T23:59:00",
-    pickupLocation: {
-      lat: 40.7489,
-      lng: -73.9680,
-      address: "Manhattan, New York, NY",
-    },
-    imageUrl: "/placeholder-food.jpg",
-    status: "available",
-  },
-];
-
-// Mock NGO status
-const ngoStatus: "pending" | "approved" | "rejected" = "pending"; // Change to "approved" to test
+import { useAppStore } from "@/lib/store";
 
 export default function AvailableFoodPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("all");
-  const isApproved = ngoStatus === "approved";
+  const [foods, setFoods] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [ngoStatus, setNgoStatus] = useState<"pending" | "approved" | "rejected" | null>(null);
+  const { user, setUser } = useAppStore();
+  
+  // Fetch NGO profile to get fresh status
+  useEffect(() => {
+    const fetchNgoProfile = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch("/api/ngo/profile", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          cache: "no-store", // Force fresh data
+        });
+        const data = await res.json();
+        if (res.ok) {
+          console.log("NGO Status fetched in available-food page:", data.status);
+          setNgoStatus(data.status);
+          // Update Zustand store
+          if (user) {
+            setUser({
+              ...user,
+              status: data.status,
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch NGO profile:", error);
+      }
+    };
+    fetchNgoProfile();
+  }, [setUser]); // Only depend on setUser to avoid infinite loop
 
-  const filteredFoods = availableFoods.filter((food) => {
+  const isApproved = ngoStatus === "approved" || user?.status === "approved";
+
+  useEffect(() => {
+    const fetchFoods = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch("/api/ngo/available-food", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setFoods(data.map((f: any) => ({
+            id: f._id,
+            donorId: f.donorId?._id || f.donorId,
+            donorName: f.donorId?.name || "Unknown Donor",
+            foodType: f.foodType,
+            quantity: f.quantity,
+            unit: f.unit,
+            preparedTime: f.preparedTime,
+            expiryTime: f.expiryTime,
+            pickupLocation: f.pickupLocation,
+            imageUrl: f.imageUrl,
+            status: f.status,
+            hasRequest: f.hasRequest,
+            requestStatus: f.requestStatus,
+          })));
+        }
+      } catch (error) {
+        console.error("Failed to fetch foods:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchFoods();
+  }, []);
+
+  const filteredFoods = foods.filter((food) => {
     const matchesSearch =
       food.foodType.toLowerCase().includes(searchQuery.toLowerCase()) ||
       food.donorName.toLowerCase().includes(searchQuery.toLowerCase());
@@ -76,6 +108,7 @@ export default function AvailableFoodPage() {
     const expiry = new Date(expiryTime);
     const diff = expiry.getTime() - now.getTime();
     const hours = Math.floor(diff / (1000 * 60 * 60));
+    if (hours < 0) return "Expired";
     return `${hours}h remaining`;
   };
 
@@ -155,21 +188,28 @@ export default function AvailableFoodPage() {
           </p>
 
           {/* Food Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredFoods.map((food) => (
-              <Card
-                key={food.id}
-                className="bg-gray-900/50 border-gray-800 overflow-hidden hover:border-teal-500/50 transition-all"
-              >
-                {/* Food Image */}
-                <div className="relative h-48 bg-gray-800">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Package className="w-16 h-16 text-gray-600" />
+          {isLoading ? (
+            <div className="text-center py-12 text-gray-400">Loading available food...</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredFoods.map((food) => (
+                <Card
+                  key={food.id}
+                  className="bg-gray-900/50 border-gray-800 overflow-hidden hover:border-teal-500/50 transition-all"
+                >
+                  {/* Food Image */}
+                  <div className="relative h-48 bg-gray-800">
+                    {food.imageUrl ? (
+                      <img src={food.imageUrl} alt={food.foodType} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Package className="w-16 h-16 text-gray-600" />
+                      </div>
+                    )}
+                    <Badge className="absolute top-2 right-2 bg-green-500 text-white">
+                      {food.hasRequest ? (food.requestStatus === "approved" ? "Approved" : "Requested") : "Available"}
+                    </Badge>
                   </div>
-                  <Badge className="absolute top-2 right-2 bg-green-500 text-white">
-                    Available
-                  </Badge>
-                </div>
 
                 {/* Food Details */}
                 <div className="p-5 space-y-3">
@@ -229,8 +269,9 @@ export default function AvailableFoodPage() {
                   </div>
                 </div>
               </Card>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           {/* Empty State */}
           {filteredFoods.length === 0 && (

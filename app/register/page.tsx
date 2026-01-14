@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useAppStore } from "@/lib/store";
 
 /* ---------------- TYPES ---------------- */
 type Role = {
@@ -41,10 +42,10 @@ const roles: Role[] = [
   { value: "donor", label: "Donor", icon: Utensils, description: "Upload surplus food" },
   { value: "ngo", label: "NGO", icon: Heart, description: "Request food donations" },
   { value: "volunteer", label: "Volunteer", icon: Truck, description: "Deliver food" },
-  { value: "admin", label: "Admin", icon: Shield, description: "Manage platform" },
 ];
 
 export default function RegisterPage() {
+  const setUser = useAppStore((state) => state.setUser);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -54,18 +55,78 @@ export default function RegisterPage() {
     phone: "",
     password: "",
     confirmPassword: "",
-    role: "",
+    role: "donor",
     organization: "",
     address: "",
   });
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    setError("");
   };
 
-  const handleRegister = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log(formData);
+    setError("");
+
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    if (!formData.role) {
+      setError("Please select a role");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          organization: formData.organization,
+          password: formData.password,
+          role: formData.role,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.error || "Registration failed");
+        setIsLoading(false);
+        return;
+      }
+
+      localStorage.setItem("token", data.token);
+      setUser({
+        id: data.user._id || data.user.id,
+        name: data.user.name,
+        role: data.user.role,
+      });
+
+      switch (data.user.role) {
+        case "donor":
+          window.location.href = "/donor";
+          break;
+        case "ngo":
+          window.location.href = "/ngo";
+          break;
+        case "volunteer":
+          window.location.href = "/volunteer";
+          break;
+        default:
+          window.location.href = "/";
+      }
+    } catch (err: any) {
+      setError(err.message || "Registration failed");
+      setIsLoading(false);
+    }
   };
 
   const showOrganization = formData.role === "ngo" || formData.role === "donor";
@@ -256,10 +317,17 @@ export default function RegisterPage() {
             {/* SUBMIT */}
             <Button
               type="submit"
+              disabled={isLoading}
               className="w-full h-12 gradient-accent text-primary-foreground text-lg shadow-glow"
             >
-              Create Account
+              {isLoading ? "Creating..." : "Create Account"}
             </Button>
+
+            {error && (
+              <p className="text-red-500 text-sm bg-red-500/10 border border-red-500/40 rounded-md p-3">
+                {error}
+              </p>
+            )}
           </form>
 
           {/* LOGIN */}

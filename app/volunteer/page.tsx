@@ -6,9 +6,31 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Package, MapPin, ArrowRight, Clock, CheckCircle2, TrendingUp, Calendar, Activity, AlertCircle, Info, Shield, Award, Users, Heart } from "lucide-react";
-import { mockTasks, Task } from "@/mock/tasks";
 import { useAppStore } from "@/lib/store";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+
+type TaskStatus = "assigned" | "accepted" | "picked_up" | "reached_ngo" | "completed" | "cancelled";
+interface Task {
+  id: string;
+  status: TaskStatus;
+  donorName: string;
+  donorAddress: string;
+  donorLat: number;
+  donorLng: number;
+  ngoName: string;
+  ngoAddress: string;
+  ngoLat: number;
+  ngoLng: number;
+  foodName: string;
+  foodDescription: string;
+  quantity: number;
+  unit: string;
+  assignedAt: string | null;
+  acceptedAt: string | null;
+  pickedUpAt: string | null;
+  reachedNgoAt: string | null;
+  completedAt: string | null;
+}
 
 export default function VolunteerPage() {
   const router = useRouter();
@@ -18,24 +40,53 @@ export default function VolunteerPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Filter tasks assigned to current volunteer that are not completed
-    const tasks = mockTasks.filter(
-      (task) =>
-        task.volunteerId === user?.id &&
-        task.status !== "completed" &&
-        task.status !== "cancelled"
-    );
-    setActiveTasks(tasks);
-
-    // Get completed tasks for stats and recent activity
-    const completed = mockTasks.filter(
-      (task) =>
-        task.volunteerId === user?.id &&
-        task.status === "completed"
-    );
-    setCompletedTasks(completed);
-    setLoading(false);
-  }, [user]);
+    const fetchTasks = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch("/api/volunteer/tasks", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          const normalized: Task[] = data.map((t: any) => ({
+            id: t._id || t.id,
+            status: t.status,
+            donorName: t.donorName,
+            donorAddress: t.donorAddress,
+            donorLat: t.donorLat,
+            donorLng: t.donorLng,
+            ngoName: t.ngoName,
+            ngoAddress: t.ngoAddress,
+            ngoLat: t.ngoLat,
+            ngoLng: t.ngoLng,
+            foodName: t.foodName,
+            foodDescription: t.foodDescription,
+            quantity: t.quantity,
+            unit: t.unit,
+            assignedAt: t.assignedAt,
+            acceptedAt: t.acceptedAt,
+            pickedUpAt: t.pickedUpAt,
+            reachedNgoAt: t.reachedNgoAt,
+            completedAt: t.completedAt,
+          }));
+          setActiveTasks(
+            normalized.filter(
+              (task) =>
+                task.status !== "completed" && task.status !== "cancelled"
+            )
+          );
+          setCompletedTasks(
+            normalized.filter((task) => task.status === "completed")
+          );
+        }
+      } catch (err) {
+        console.error("Failed to load tasks", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTasks();
+  }, []);
 
   const getStatusColor = (status: Task["status"]) => {
     switch (status) {
@@ -530,12 +581,21 @@ export default function VolunteerPage() {
                     </div>
                   </div>
                 </div>
-                <Button
-                  onClick={() => router.push(`/volunteer/tasks/${currentTask.id}`)}
-                  className="w-full bg-teal-500 hover:bg-teal-600 text-white"
-                >
-                  {getButtonText(currentTask.status)}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => router.push(`/volunteer/tasks`)}
+                    variant="outline"
+                    className="flex-1 border-teal-500 text-teal-500 hover:bg-teal-500/10"
+                  >
+                    View All Tasks
+                  </Button>
+                  <Button
+                    onClick={() => router.push(`/volunteer/tasks/${currentTask.id}`)}
+                    className="flex-1 bg-teal-500 hover:bg-teal-600 text-white"
+                  >
+                    {getButtonText(currentTask.status)}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
 
@@ -564,12 +624,16 @@ export default function VolunteerPage() {
               <h3 className="text-xl font-semibold text-white mb-2">
                 Waiting for assignment from admin
               </h3>
-              <p className="text-gray-400 mb-2">
+              <p className="text-gray-400 mb-4">
                 You will be notified once a task is assigned
               </p>
-              <p className="text-sm text-gray-500">
-                Check back later or contact admin for updates
-              </p>
+              <Button
+                onClick={() => router.push("/volunteer/tasks")}
+                variant="outline"
+                className="border-teal-500 text-teal-500 hover:bg-teal-500/10"
+              >
+                View All Tasks
+              </Button>
             </CardContent>
           </Card>
         )}
@@ -709,4 +773,7 @@ export default function VolunteerPage() {
     </div>
   );
 }
+
+
+
 

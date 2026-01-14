@@ -6,6 +6,7 @@ export interface User {
   id: string;
   name: string;
   role: UserRole;
+  status?: "pending" | "approved" | "rejected";
 }
 
 export interface Notification {
@@ -28,22 +29,10 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  user: {
-    id: "1",
-    name: "John Doe",
-    role: "donor",
-  },
+  user: null,
   notifications: {
-    list: [
-      {
-        id: "1",
-        title: "Welcome to FeedFlow",
-        message: "Thank you for joining our platform!",
-        read: false,
-        createdAt: new Date().toISOString(),
-      },
-    ],
-    unreadCount: 1,
+    list: [],
+    unreadCount: 0,
   },
   setUser: (user) => set({ user }),
   setNotifications: (notifications) =>
@@ -66,4 +55,7 @@ export const useAppStore = create<AppState>((set) => ({
       };
     }),
 }));
+
+
+
 
