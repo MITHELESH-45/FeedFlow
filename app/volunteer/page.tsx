@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Package, MapPin, ArrowRight, Clock, CheckCircle2, TrendingUp, Calendar, Activity, AlertCircle, Info, Shield, Award, Users, Heart } from "lucide-react";
 import { mockTasks, Task } from "@/mock/tasks";
 import { useAppStore } from "@/lib/store";
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 export default function VolunteerPage() {
   const router = useRouter();
@@ -147,6 +148,26 @@ export default function VolunteerPage() {
 
   const volunteerState = getVolunteerState();
   const stateInfo = getStateMessage(volunteerState);
+
+  // Performance data for charts
+  const weeklyPerformanceData = [
+    { day: "Mon", deliveries: 3, hours: 4.5 },
+    { day: "Tue", deliveries: 5, hours: 6.2 },
+    { day: "Wed", deliveries: 4, hours: 5.1 },
+    { day: "Thu", deliveries: 6, hours: 7.3 },
+    { day: "Fri", deliveries: 4, hours: 5.8 },
+    { day: "Sat", deliveries: 7, hours: 8.5 },
+    { day: "Sun", deliveries: 2, hours: 2.5 }
+  ];
+
+  const monthlyTrendData = [
+    { month: "Aug", completed: 18, rating: 4.7 },
+    { month: "Sep", completed: 22, rating: 4.8 },
+    { month: "Oct", completed: 25, rating: 4.9 },
+    { month: "Nov", completed: 28, rating: 4.9 },
+    { month: "Dec", completed: 30, rating: 5.0 },
+    { month: "Jan", completed: completedTasks.length, rating: 4.9 }
+  ];
   const StateIcon = stateInfo.icon;
 
   // Calculate today's deliveries
@@ -266,6 +287,91 @@ export default function VolunteerPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Performance Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Weekly Performance Chart */}
+          <Card className="bg-gray-900/50 border-gray-800">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-teal-500" />
+                Weekly Performance
+              </CardTitle>
+              <CardDescription className="text-gray-400">
+                Deliveries completed this week
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={weeklyPerformanceData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="day" stroke="#9ca3af" />
+                  <YAxis stroke="#9ca3af" />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#1f2937', 
+                      border: '1px solid #374151',
+                      borderRadius: '8px'
+                    }}
+                    labelStyle={{ color: '#fff' }}
+                  />
+                  <Legend />
+                  <Bar dataKey="deliveries" fill="#14b8a6" name="Deliveries" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Monthly Trend Chart */}
+          <Card className="bg-gray-900/50 border-gray-800">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Award className="w-5 h-5 text-teal-500" />
+                Monthly Trend
+              </CardTitle>
+              <CardDescription className="text-gray-400">
+                Deliveries and rating over time
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={250}>
+                <LineChart data={monthlyTrendData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="month" stroke="#9ca3af" />
+                  <YAxis yAxisId="left" stroke="#9ca3af" />
+                  <YAxis yAxisId="right" orientation="right" stroke="#9ca3af" domain={[4, 5]} />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#1f2937', 
+                      border: '1px solid #374151',
+                      borderRadius: '8px'
+                    }}
+                    labelStyle={{ color: '#fff' }}
+                  />
+                  <Legend />
+                  <Line 
+                    yAxisId="left"
+                    type="monotone" 
+                    dataKey="completed" 
+                    stroke="#14b8a6" 
+                    strokeWidth={2}
+                    name="Completed"
+                    dot={{ fill: '#14b8a6', r: 4 }}
+                  />
+                  <Line 
+                    yAxisId="right"
+                    type="monotone" 
+                    dataKey="rating" 
+                    stroke="#fbbf24" 
+                    strokeWidth={2}
+                    name="Rating"
+                    dot={{ fill: '#fbbf24', r: 4 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Delivery Progress Timeline (Read-Only) */}
         {currentTask && (

@@ -2,21 +2,27 @@
 
 import { MapPin, Navigation2 } from "lucide-react";
 
-interface Location {
-  lat: number;
-  lng: number;
-  label: string;
-  color: "teal" | "blue";
-}
-
 interface ReadOnlyMapProps {
-  locations: Location[];
+  pickupLocation: { lat: number; lng: number };
+  dropLocation: { lat: number; lng: number };
+  pickupLabel?: string;
+  dropLabel?: string;
 }
 
-export default function ReadOnlyMap({ locations }: ReadOnlyMapProps) {
-  // Calculate center point between all locations
-  const centerLat = locations.reduce((sum, loc) => sum + loc.lat, 0) / locations.length;
-  const centerLng = locations.reduce((sum, loc) => sum + loc.lng, 0) / locations.length;
+export default function ReadOnlyMap({ 
+  pickupLocation, 
+  dropLocation, 
+  pickupLabel = "Pickup", 
+  dropLabel = "Drop" 
+}: ReadOnlyMapProps) {
+  // Calculate center point between pickup and drop
+  const centerLat = (pickupLocation.lat + dropLocation.lat) / 2;
+  const centerLng = (pickupLocation.lng + dropLocation.lng) / 2;
+  
+  const locations = [
+    { ...pickupLocation, label: pickupLabel, color: "teal" as const },
+    { ...dropLocation, label: dropLabel, color: "blue" as const }
+  ];
 
   return (
     <div className="w-full h-[300px] rounded-lg overflow-hidden border border-gray-700 relative">

@@ -399,42 +399,135 @@ export default function VolunteerHistoryPage() {
                         {/* DELIVERY TIMELINE */}
                         <div>
                           <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Delivery Timeline</h4>
-                          <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+                          <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700 space-y-3">
+                            {/* Assigned */}
                             <div className="flex items-center gap-3">
-                              <Clock className="w-4 h-4 text-teal-500" />
-                              <div className="flex-1">
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="text-sm text-gray-300">
-                                    Picked up at {task.pickedUpAt && new Date(task.pickedUpAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
-                                  </span>
-                                  <CheckCircle2 className="w-4 h-4 text-teal-500" />
-                                </div>
-                                <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
-                                  <div className="h-full bg-teal-500 rounded-full" style={{ width: '100%' }}></div>
-                                </div>
-                                <div className="flex items-center justify-between mt-2">
-                                  <span className="text-xs text-gray-500">Started</span>
-                                  <span className="text-xs text-teal-400">Delivered</span>
-                                </div>
+                              <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
+                                <CheckCircle2 className="w-4 h-4 text-white" />
                               </div>
+                              <div className="flex-1">
+                                <p className="text-sm text-white font-medium">Task Assigned</p>
+                                <p className="text-xs text-gray-400">
+                                  {task.assignedAt && new Date(task.assignedAt).toLocaleString('en-US', { 
+                                    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true 
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Accepted */}
+                            <div className="flex items-center gap-3 pl-3 border-l-2 border-gray-700">
+                              <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center">
+                                <CheckCircle2 className="w-4 h-4 text-white" />
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm text-white font-medium">Task Accepted</p>
+                                <p className="text-xs text-gray-400">
+                                  {task.acceptedAt && new Date(task.acceptedAt).toLocaleString('en-US', { 
+                                    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true 
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Picked Up */}
+                            <div className="flex items-center gap-3 pl-3 border-l-2 border-gray-700">
+                              <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center">
+                                <CheckCircle2 className="w-4 h-4 text-white" />
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm text-white font-medium">Food Picked Up</p>
+                                <p className="text-xs text-gray-400">
+                                  {task.pickedUpAt && new Date(task.pickedUpAt).toLocaleString('en-US', { 
+                                    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true 
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Reached NGO */}
+                            <div className="flex items-center gap-3 pl-3 border-l-2 border-gray-700">
+                              <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center">
+                                <CheckCircle2 className="w-4 h-4 text-white" />
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm text-white font-medium">Reached NGO</p>
+                                <p className="text-xs text-gray-400">
+                                  {task.reachedNgoAt && new Date(task.reachedNgoAt).toLocaleString('en-US', { 
+                                    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true 
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Completed */}
+                            <div className="flex items-center gap-3 pl-3 border-l-2 border-gray-700">
+                              <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
+                                <CheckCircle2 className="w-4 h-4 text-white" />
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm text-white font-medium">Delivery Completed</p>
+                                <p className="text-xs text-gray-400">
+                                  {task.completedAt && new Date(task.completedAt).toLocaleString('en-US', { 
+                                    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true 
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Duration Summary */}
+                            <div className="pt-2 border-t border-gray-700 flex items-center justify-between">
+                              <span className="text-xs text-gray-400">Total Duration</span>
+                              <span className="text-sm font-semibold text-teal-400">
+                                {task.assignedAt && task.completedAt && calculateDuration(task.assignedAt, task.completedAt)}
+                              </span>
                             </div>
                           </div>
                         </div>
 
-                        {/* NGO FEEDBACK */}
-                        <div>
-                          <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">NGO Feedback</h4>
-                          <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
-                            <div className="flex items-start gap-3">
-                              <div className="flex gap-1">
-                                {[1, 2, 3, 4, 5].map((star) => (
-                                  <svg key={star} className="w-4 h-4 text-yellow-500 fill-current" viewBox="0 0 20 20">
-                                    <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
-                                  </svg>
-                                ))}
+                        {/* ADDITIONAL DETAILS & FEEDBACK */}
+                        <div className="grid md:grid-cols-2 gap-4">
+                          {/* Contact Information */}
+                          <div>
+                            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Contact Details</h4>
+                            <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700 space-y-2">
+                              <div>
+                                <p className="text-xs text-gray-500">Donor Phone</p>
+                                <p className="text-sm text-white">{task.donorPhone || "Not provided"}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-500">NGO Phone</p>
+                                <p className="text-sm text-white">{task.ngoPhone || "Not provided"}</p>
                               </div>
                             </div>
-                            <p className="text-sm text-gray-300 mt-2 italic">"Quick and careful delivery!"</p>
+                          </div>
+
+                          {/* NGO Feedback */}
+                          <div>
+                            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">NGO Feedback</h4>
+                            <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="flex gap-1">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <svg key={star} className="w-4 h-4 text-yellow-500 fill-current" viewBox="0 0 20 20">
+                                      <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
+                                    </svg>
+                                  ))}
+                                </div>
+                                <span className="text-sm font-semibold text-white">5.0</span>
+                              </div>
+                              <p className="text-sm text-gray-300 italic">"Quick and careful delivery!"</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Task ID & Metadata */}
+                        <div className="pt-2 border-t border-gray-800">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-gray-500">Task ID: {task.id}</span>
+                            <span className="text-gray-500">
+                              Created: {new Date(task.createdAt).toLocaleDateString()}
+                            </span>
                           </div>
                         </div>
                       </div>
