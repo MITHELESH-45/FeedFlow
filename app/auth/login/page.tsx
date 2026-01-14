@@ -15,31 +15,60 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LogIn, Mail, Lock, User } from "lucide-react";
+import { useAppStore } from "@/lib/store";
 
 export default function LoginPage() {
   const router = useRouter();
+  const setUser = useAppStore((state) => state.setUser);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     role: "donor",
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    setError("");
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError("");
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Login failed");
+        setIsLoading(false);
+        return;
+      }
+
+      // Save token and user
+      localStorage.setItem("token", data.token);
+      setUser({
+        id: data.user._id || data.user.id,
+        name: data.user.name,
+        role: data.user.role,
+      });
+
       // Route based on role
-      switch (formData.role) {
+      switch (data.user.role) {
         case "donor":
           router.push("/donor");
           break;
@@ -55,7 +84,10 @@ export default function LoginPage() {
         default:
           router.push("/donor");
       }
-    }, 1000);
+    } catch (err: any) {
+      setError(err.message || "An error occurred");
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -154,6 +186,12 @@ export default function LoginPage() {
               </Select>
             </div>
           </div>
+
+          {error && (
+            <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/50 rounded-lg p-3">
+              {error}
+            </p>
+          )}
 
           <Button
             type="submit"

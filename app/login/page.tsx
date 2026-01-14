@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAppStore } from "@/lib/store";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { Eye, EyeOff, Leaf, Utensils, Heart, Truck, Shield } from "lucide-react";
@@ -59,32 +60,61 @@ const roles: Role[] = [
 
 export default function LoginPage() {
   const router = useRouter();
+  const setUser = useAppStore((state) => state.setUser);
 
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("");
+  const [role, setRole] = useState("donor");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log({ email, password, role });
+    setError("");
+    setIsLoading(true);
 
-    // Route based on role
-    switch (role) {
-      case "donor":
-        router.push("/donor");
-        break;
-      case "ngo":
-        router.push("/ngo");
-        break;
-      case "volunteer":
-        router.push("/volunteer");
-        break;
-      case "admin":
-        router.push("/admin");
-        break;
-      default:
-        router.push("/donor");
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.error || "Invalid credentials");
+        setIsLoading(false);
+        return;
+      }
+
+      localStorage.setItem("token", data.token);
+      setUser({
+        id: data.user._id || data.user.id,
+        name: data.user.name,
+        role: data.user.role,
+      });
+
+      const userRole = data.user.role as string;
+      switch (userRole) {
+        case "donor":
+          router.push("/donor");
+          break;
+        case "ngo":
+          router.push("/ngo");
+          break;
+        case "volunteer":
+          router.push("/volunteer");
+          break;
+        case "admin":
+          router.push("/admin");
+          break;
+        default:
+          router.push("/");
+      }
+    } catch (err: any) {
+      setError(err.message || "Login failed");
+      setIsLoading(false);
     }
   };
 
@@ -177,12 +207,19 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {error && (
+              <p className="text-red-500 text-sm bg-red-500/10 border border-red-500/40 rounded-md p-3">
+                {error}
+              </p>
+            )}
+
             {/* SUBMIT */}
             <Button
               type="submit"
+              disabled={isLoading}
               className="w-full h-12 gradient-accent text-primary-foreground text-lg shadow-glow"
             >
-              Sign In
+              {isLoading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
 
