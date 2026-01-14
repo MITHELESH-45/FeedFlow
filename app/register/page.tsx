@@ -41,7 +41,6 @@ const roles: Role[] = [
   { value: "donor", label: "Donor", icon: Utensils, description: "Upload surplus food" },
   { value: "ngo", label: "NGO", icon: Heart, description: "Request food donations" },
   { value: "volunteer", label: "Volunteer", icon: Truck, description: "Deliver food" },
-  { value: "admin", label: "Admin", icon: Shield, description: "Manage platform" },
 ];
 
 export default function RegisterPage() {
