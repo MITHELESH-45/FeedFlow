@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,20 +21,40 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Search, Package, User, Building2 } from "lucide-react";
-import { mockFoods } from "@/mock/foods";
+import { toast } from "sonner";
 
 export default function FoodMonitoringPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFood, setSelectedFood] = useState<any>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [foodItems, setFoodItems] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Extended mock data with additional info
-  const foodItems = mockFoods.map((food) => ({
-    ...food,
-    donorName: food.donorId === "1" ? "John Doe" : "Sarah Smith",
-    ngoName: food.status !== "available" ? "Hope Foundation" : null,
-    volunteerName: ["picked_up", "reached_ngo", "completed"].includes(food.status) ? "Bob Johnson" : null,
-  }));
+  useEffect(() => {
+    fetchFoods();
+  }, []);
+
+  const fetchFoods = async () => {
+    try {
+      const res = await fetch("/api/admin/food");
+      const data = await res.json();
+      if (res.ok) {
+        setFoodItems(data.foods.map((food: any) => ({
+          ...food,
+          id: food._id,
+          name: food.title,
+          donorName: food.donor?.name || "Unknown",
+          ngoName: food.ngo?.name || null,
+          volunteerName: food.volunteer?.name || null,
+        })));
+      }
+    } catch (error) {
+      console.error("Failed to fetch food:", error);
+      toast.error("Failed to load food items");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const filteredFoods = foodItems.filter((food) => {
     const matchesSearch = food.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

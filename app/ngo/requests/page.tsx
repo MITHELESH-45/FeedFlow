@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,68 +24,57 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-// Mock requests data
-const requestsData = [
-  {
-    id: "req1",
-    foodId: "f1",
-    donorName: "Restaurant ABC",
-    foodType: "Cooked Meals",
-    requestedQuantity: 30,
-    unit: "meals",
-    status: "requested", // requested | approved | rejected | in_transit | reached_ngo | completed
-    requestDate: "2024-01-15T10:00:00",
-    pickupLocation: {
-      address: "Times Square, New York, NY",
-    },
-    deliveryLocation: {
-      address: "123 Charity St, New York, NY",
-    },
-  },
-  {
-    id: "req2",
-    foodId: "f2",
-    donorName: "Grocery Store XYZ",
-    foodType: "Packaged Food",
-    quantity: 20,
-    unit: "kg",
-    status: "reached_ngo",
-    requestDate: "2024-01-14T08:00:00",
-    pickupLocation: {
-      address: "Manhattan, New York, NY",
-    },
-    deliveryLocation: {
-      address: "123 Charity St, New York, NY",
-    },
-    assignedVolunteer: "John Doe",
-  },
-  {
-    id: "req3",
-    foodId: "f3",
-    donorName: "Hotel Paradise",
-    foodType: "Cooked Meals",
-    requestedQuantity: 40,
-    unit: "meals",
-    status: "completed",
-    requestDate: "2024-01-13T12:00:00",
-    completedDate: "2024-01-13T18:00:00",
-    pickupLocation: {
-      address: "Brooklyn, New York, NY",
-    },
-    deliveryLocation: {
-      address: "123 Charity St, New York, NY",
-    },
-    rating: 5,
-    feedback: "Great food quality and timely delivery!",
-  },
-];
-
 export default function MyRequestsPage() {
   const [filter, setFilter] = useState("all");
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
   const [rating, setRating] = useState(5);
   const [feedback, setFeedback] = useState("");
+  const [requests, setRequests] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRequests = async () => {
+      try {
+        const res = await fetch("/api/ngo/requests");
+        const data = await res.json();
+        if (res.ok) {
+          setRequests(data.requests.map((r: any) => {
+             let status = "requested";
+             if (r.status === "pending") status = "requested";
+             else if (r.status === "rejected") status = "rejected";
+             else if (r.status === "approved") {
+                 const fs = r.food?.status;
+                 if (fs === "picked_up") status = "in_transit";
+                 else if (fs === "reached_ngo") status = "reached_ngo";
+                 else if (fs === "completed") status = "completed";
+                 else status = "approved";
+             }
+
+             return {
+                 id: r._id,
+                 foodId: r.food?._id,
+                 donorName: r.food?.donor?.name || "Unknown",
+                 foodType: r.food?.foodType,
+                 requestedQuantity: r.quantity,
+                 unit: r.food?.unit || "units",
+                 status: status,
+                 requestDate: r.createdAt,
+                 pickupLocation: r.food?.pickupLocation || { address: "Unknown" },
+                 deliveryLocation: { address: "My Address" }, 
+             };
+          }));
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchRequests();
+  }, []);
+
+  const requestsData = requests; // Alias for existing code compatibility
 
   const getStatusBadge = (status: string) => {
     const configs = {

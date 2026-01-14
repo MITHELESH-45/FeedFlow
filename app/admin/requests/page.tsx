@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -51,64 +51,44 @@ export default function RequestReviewPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRequest, setSelectedRequest] = useState<FoodRequest | null>(null);
   const [viewingFood, setViewingFood] = useState<string | null>(null);
+  const [requests, setRequests] = useState<FoodRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock data - would come from backend
-  const [requests, setRequests] = useState<FoodRequest[]>([
-    {
-      id: "1",
-      foodId: "F001",
-      foodName: "Fresh Vegetables",
-      foodDescription: "Assorted fresh vegetables",
-      quantity: 50,
-      unit: "kg",
-      donorName: "John Doe",
-      donorAddress: "123 Main St, Downtown",
-      pickupLocation: { lat: 40.7128, lng: -74.0060 },
-      ngoId: "N001",
-      ngoName: "Hope Foundation",
-      ngoAddress: "456 Community Ave, Uptown",
-      ngoLocation: { lat: 40.7580, lng: -73.9855 },
-      status: "pending",
-      requestedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-      expiryDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: "2",
-      foodId: "F001",
-      foodName: "Fresh Vegetables",
-      foodDescription: "Assorted fresh vegetables",
-      quantity: 30,
-      unit: "kg",
-      donorName: "John Doe",
-      donorAddress: "123 Main St, Downtown",
-      pickupLocation: { lat: 40.7128, lng: -74.0060 },
-      ngoId: "N002",
-      ngoName: "Community Kitchen",
-      ngoAddress: "789 Service St, Midtown",
-      ngoLocation: { lat: 40.7489, lng: -73.9680 },
-      status: "pending",
-      requestedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-      expiryDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: "3",
-      foodId: "F002",
-      foodName: "Bread",
-      foodDescription: "Fresh bread from bakery",
-      quantity: 20,
-      unit: "loaves",
-      donorName: "Sarah Smith",
-      donorAddress: "789 Bakery Lane, Downtown",
-      pickupLocation: { lat: 40.7282, lng: -74.0776 },
-      ngoId: "N003",
-      ngoName: "Shelter Aid",
-      ngoAddress: "321 Shelter St, Uptown",
-      ngoLocation: { lat: 40.7580, lng: -73.9855 },
-      status: "pending",
-      requestedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-      expiryDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString()
-    },
-  ]);
+  useEffect(() => {
+    fetchRequests();
+  }, []);
+
+  const fetchRequests = async () => {
+    try {
+      const res = await fetch("/api/admin/requests");
+      const data = await res.json();
+      if (res.ok) {
+        setRequests(data.requests.map((r: any) => ({
+          id: r._id,
+          foodId: r.food?._id,
+          foodName: r.food?.title,
+          foodDescription: r.food?.description || "",
+          quantity: r.quantity,
+          unit: r.food?.unit || "units",
+          donorName: r.food?.donor?.name || "Unknown",
+          donorAddress: r.food?.pickupLocation?.address || "",
+          pickupLocation: r.food?.pickupLocation || { lat: 0, lng: 0 },
+          ngoId: r.ngo?._id,
+          ngoName: r.ngo?.name,
+          ngoAddress: r.ngo?.address || "", 
+          ngoLocation: { lat: 0, lng: 0 },
+          status: r.status,
+          requestedAt: r.createdAt,
+          expiryDate: r.food?.expiryTime
+        })));
+      }
+    } catch (error) {
+      console.error("Failed to fetch requests:", error);
+      toast.error("Failed to load requests");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Group requests by food ID
   const groupedRequests = requests.reduce((acc, request) => {
@@ -119,28 +99,45 @@ export default function RequestReviewPage() {
     return acc;
   }, {} as Record<string, FoodRequest[]>);
 
-  const handleApprove = (requestId: string, foodId: string) => {
-    setRequests(requests.map(req => {
-      if (req.id === requestId) {
-        return { ...req, status: "approved" as const };
+  const handleApprove = async (requestId: string, foodId: string) => {
+    try {
+      const res = await fetch("/api/admin/requests", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId, status: "approved" }),
+      });
+      
+      if (res.ok) {
+        toast.success("Request approved and food assigned to NGO");
+        fetchRequests();
+        setSelectedRequest(null);
+        setViewingFood(null);
+      } else {
+        toast.error("Failed to approve request");
       }
-      // Reject all other requests for the same food
-      if (req.foodId === foodId && req.id !== requestId && req.status === "pending") {
-        return { ...req, status: "rejected" as const };
-      }
-      return req;
-    }));
-    setSelectedRequest(null);
-    setViewingFood(null);
-    toast.success("Request approved and food assigned to NGO");
+    } catch (error) {
+      toast.error("Error approving request");
+    }
   };
 
-  const handleReject = (requestId: string) => {
-    setRequests(requests.map(req => 
-      req.id === requestId ? { ...req, status: "rejected" as const } : req
-    ));
-    setSelectedRequest(null);
-    toast.error("Request rejected");
+  const handleReject = async (requestId: string) => {
+    try {
+      const res = await fetch("/api/admin/requests", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId, status: "rejected" }),
+      });
+      
+      if (res.ok) {
+        toast.success("Request rejected");
+        fetchRequests();
+        setSelectedRequest(null);
+      } else {
+        toast.error("Failed to reject request");
+      }
+    } catch (error) {
+      toast.error("Error rejecting request");
+    }
   };
 
   const getStatusBadge = (status: string) => {

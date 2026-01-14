@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,54 +16,47 @@ import {
   ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
-
-// Mock available food data
-const availableFoods = [
-  {
-    id: "1",
-    donorId: "d1",
-    donorName: "Restaurant ABC",
-    foodType: "Cooked Meals",
-    quantity: 50,
-    unit: "meals",
-    preparedTime: "2024-01-15T10:00:00",
-    expiryTime: "2024-01-15T18:00:00",
-    pickupLocation: {
-      lat: 40.7580,
-      lng: -73.9855,
-      address: "Times Square, New York, NY",
-    },
-    imageUrl: "/placeholder-food.jpg",
-    status: "available",
-  },
-  {
-    id: "2",
-    donorId: "d2",
-    donorName: "Grocery Store XYZ",
-    foodType: "Packaged Food",
-    quantity: 30,
-    unit: "kg",
-    preparedTime: "2024-01-15T08:00:00",
-    expiryTime: "2024-01-20T23:59:00",
-    pickupLocation: {
-      lat: 40.7489,
-      lng: -73.9680,
-      address: "Manhattan, New York, NY",
-    },
-    imageUrl: "/placeholder-food.jpg",
-    status: "available",
-  },
-];
-
-// Mock NGO status
-const ngoStatus: "pending" | "approved" | "rejected" = "pending"; // Change to "approved" to test
+import { useAppStore } from "@/lib/store";
 
 export default function AvailableFoodPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("all");
-  const isApproved = ngoStatus === "approved";
+  const [foods, setFoods] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAppStore();
+  const isApproved = user?.status === "approved";
 
-  const filteredFoods = availableFoods.filter((food) => {
+  useEffect(() => {
+    const fetchFoods = async () => {
+      try {
+        const res = await fetch("/api/food");
+        const data = await res.json();
+        if (res.ok) {
+          setFoods(data.foods.map((f: any) => ({
+            id: f._id,
+            donorId: f.donor?._id,
+            donorName: f.donor?.name || "Unknown Donor",
+            foodType: f.foodType,
+            quantity: f.quantity,
+            unit: f.unit,
+            preparedTime: f.preparedTime,
+            expiryTime: f.expiryTime,
+            pickupLocation: f.pickupLocation,
+            imageUrl: f.imageUrl,
+            status: f.status,
+          })));
+        }
+      } catch (error) {
+        console.error("Failed to fetch foods:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchFoods();
+  }, []);
+
+  const filteredFoods = foods.filter((food) => {
     const matchesSearch =
       food.foodType.toLowerCase().includes(searchQuery.toLowerCase()) ||
       food.donorName.toLowerCase().includes(searchQuery.toLowerCase());
@@ -76,6 +69,7 @@ export default function AvailableFoodPage() {
     const expiry = new Date(expiryTime);
     const diff = expiry.getTime() - now.getTime();
     const hours = Math.floor(diff / (1000 * 60 * 60));
+    if (hours < 0) return "Expired";
     return `${hours}h remaining`;
   };
 
