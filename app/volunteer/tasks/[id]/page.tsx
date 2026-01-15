@@ -16,7 +16,19 @@ import {
   Package,
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
-import ReadOnlyMap from "@/components/ReadOnlyMap";
+import dynamic from "next/dynamic";
+
+const ReadOnlyMap = dynamic(() => import("@/components/ReadOnlyMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[300px] rounded-lg bg-gray-800 flex items-center justify-center border border-gray-700">
+      <div className="text-center">
+        <div className="w-8 h-8 border-2 border-teal-500/30 border-t-teal-500 rounded-full animate-spin mx-auto mb-2" />
+        <p className="text-gray-500 text-sm">Loading map...</p>
+      </div>
+    </div>
+  ),
+});
 
 interface Task {
   _id: string;
@@ -245,7 +257,7 @@ export default function TaskDetailPage() {
   };
 
   const openInGoogleMaps = (lat: number, lng: number, label: string) => {
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&destination_place_id=${label}`;
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
     window.open(url, "_blank");
   };
 
@@ -566,14 +578,34 @@ export default function TaskDetailPage() {
               View pickup and drop locations. Use navigation buttons above to get directions.
             </p>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             {taskData.donorLat && taskData.donorLng && taskData.ngoLat && taskData.ngoLng ? (
-              <ReadOnlyMap 
-                pickupLocation={{ lat: taskData.donorLat, lng: taskData.donorLng }}
-                dropLocation={{ lat: taskData.ngoLat, lng: taskData.ngoLng }}
-                pickupLabel={`Pickup: ${taskData.donorName}`}
-                dropLabel={`Drop: ${taskData.ngoName}`}
-              />
+              <>
+                <ReadOnlyMap 
+                  pickupLocation={{ lat: taskData.donorLat, lng: taskData.donorLng }}
+                  dropLocation={{ lat: taskData.ngoLat, lng: taskData.ngoLng }}
+                  pickupLabel={`Pickup: ${taskData.donorName}`}
+                  dropLabel={`Drop: ${taskData.ngoName}`}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => openInGoogleMaps(taskData.donorLat, taskData.donorLng, taskData.donorName)}
+                    variant="outline"
+                    className="flex-1 border-teal-500/50 text-teal-500 hover:bg-teal-500/10"
+                  >
+                    <Navigation className="w-4 h-4 mr-2" />
+                    Open Donor in Google Maps
+                  </Button>
+                  <Button
+                    onClick={() => openInGoogleMaps(taskData.ngoLat, taskData.ngoLng, taskData.ngoName)}
+                    variant="outline"
+                    className="flex-1 border-blue-500/50 text-blue-500 hover:bg-blue-500/10"
+                  >
+                    <Navigation className="w-4 h-4 mr-2" />
+                    Open NGO in Google Maps
+                  </Button>
+                </div>
+              </>
             ) : (
               <div className="w-full h-[300px] rounded-lg bg-gray-800 flex items-center justify-center border border-gray-700">
                 <p className="text-gray-400">Location data not available</p>

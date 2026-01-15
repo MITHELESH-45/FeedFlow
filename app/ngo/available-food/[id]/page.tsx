@@ -19,7 +19,19 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useAppStore } from "@/lib/store";
-import ReadOnlyMap from "@/components/ReadOnlyMap";
+import dynamic from "next/dynamic";
+
+const ReadOnlyMap = dynamic(() => import("@/components/ReadOnlyMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[300px] rounded-lg bg-gray-800 flex items-center justify-center border border-gray-700">
+      <div className="text-center">
+        <div className="w-8 h-8 border-2 border-teal-500/30 border-t-teal-500 rounded-full animate-spin mx-auto mb-2" />
+        <p className="text-gray-500 text-sm">Loading map...</p>
+      </div>
+    </div>
+  ),
+});
 
 export default function FoodDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -286,19 +298,17 @@ export default function FoodDetailPage({ params }: { params: { id: string } }) {
                 Pickup Location (Donor Address)
               </h2>
 
-              {/* Read-only Map using ReadOnlyMap component */}
-              {ngo?.deliveryLocation ? (
+              {/* Read-only Map showing only donor pickup location */}
+              {food.pickupLocation.lat && food.pickupLocation.lng ? (
                 <ReadOnlyMap
                   pickupLocation={{ lat: food.pickupLocation.lat, lng: food.pickupLocation.lng }}
-                  dropLocation={{ lat: ngo.deliveryLocation.lat, lng: ngo.deliveryLocation.lng }}
-                  pickupLabel="Pickup Location"
-                  dropLabel="Your Delivery Location"
+                  pickupLabel="Donor Pickup Location"
                 />
               ) : (
                 <div className="relative w-full h-64 rounded-lg overflow-hidden bg-gray-800 flex items-center justify-center">
                   <div className="text-center">
                     <MapPin className="w-12 h-12 text-gray-600 mx-auto mb-2" />
-                    <p className="text-gray-400">Set your delivery location to see the route</p>
+                    <p className="text-gray-400">Location data not available</p>
                   </div>
                 </div>
               )}

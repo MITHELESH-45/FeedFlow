@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     const unreadCount = notifications.filter((n) => !n.read).length;
 
     return NextResponse.json({
-      list: notifications,
+      notifications: notifications,
       unreadCount,
     });
   } catch (error: any) {
@@ -33,5 +33,8 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+
+
 
 

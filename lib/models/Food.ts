@@ -58,3 +58,6 @@ const Food: Model<IFood> = mongoose.models.Food || mongoose.model<IFood>("Food",
 export default Food;
 
 
+
+
+
