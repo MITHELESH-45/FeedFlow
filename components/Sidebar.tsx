@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useAppStore } from "@/lib/store";
 import {
   LayoutGrid,
   Plus,
@@ -55,33 +57,64 @@ const adminNavigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const user = useAppStore((state) => state.user);
+  const [userEmail, setUserEmail] = useState<string>("");
+
+  // Fetch email from API if not in store
+  useEffect(() => {
+    const fetchUserEmail = async () => {
+      if (user?.email) {
+        setUserEmail(user.email);
+        return;
+      }
+
+      // If email not in store, try to get it from API
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        // Determine which profile endpoint to use based on role
+        let endpoint = "/api/donor/profile";
+        if (user?.role === "ngo") endpoint = "/api/ngo/profile";
+        else if (user?.role === "volunteer") endpoint = "/api/volunteer/profile";
+        else if (user?.role === "admin") endpoint = "/api/admin/profile";
+
+        const res = await fetch(endpoint, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.email) {
+            setUserEmail(data.email);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch user email:", error);
+      }
+    };
+
+    fetchUserEmail();
+  }, [user]);
 
   // Determine which navigation to use based on current route
   let navigation = donorNavigation;
   let portalName = "Donor Portal";
-  let userName = "John Restaurant";
-  let userEmail = "donor@feedflow.com";
-  let userInitial = "J";
 
   if (pathname.startsWith("/ngo")) {
     navigation = ngoNavigation;
     portalName = "NGO Portal";
-    userName = "Food Bank NYC";
-    userEmail = "ngo@feedflow.com";
-    userInitial = "F";
   } else if (pathname.startsWith("/volunteer")) {
     navigation = volunteerNavigation;
     portalName = "Volunteer Portal";
-    userName = "John Volunteer";
-    userEmail = "volunteer@feedflow.com";
-    userInitial = "J";
   } else if (pathname.startsWith("/admin")) {
     navigation = adminNavigation;
     portalName = "Admin Portal";
-    userName = "Admin User";
-    userEmail = "admin@feedflow.com";
-    userInitial = "A";
   }
+
+  // Get user data from store or use defaults
+  const userName = user?.name || "User";
+  const email = userEmail || user?.email || "";
+  const userInitial = userName.charAt(0).toUpperCase();
 
   return (
     <>
@@ -109,7 +142,9 @@ export function Sidebar() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-white font-medium text-sm truncate">{userName}</p>
-                <p className="text-teal-400 text-xs truncate">{userEmail}</p>
+                {email && (
+                  <p className="text-teal-400 text-xs truncate">{email}</p>
+                )}
               </div>
             </div>
           </div>
@@ -170,6 +205,7 @@ export function Sidebar() {
     </>
   );
 }
+
 
 
 

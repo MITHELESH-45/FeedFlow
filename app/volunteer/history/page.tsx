@@ -44,25 +44,25 @@ export default function VolunteerHistoryPage() {
           },
         });
         const data = await res.json();
-        if (res.ok) {
-          const tasks = data.tasks
-            .filter((task: Task) => task.status === "completed")
-            .map((task: Task) => ({
-              id: task._id,
-              foodName: task.foodId?.foodType || "Unknown",
-              foodDescription: task.foodId?.description || "",
-              quantity: task.foodId?.quantity || 0,
-              unit: task.foodId?.unit || "",
-              donorName: task.foodId?.donorId?.name || "Unknown",
-              donorPhone: task.foodId?.donorId?.phone || "",
-              donorAddress: task.foodId?.pickupLocation?.address || "",
-              donorLat: task.foodId?.pickupLocation?.lat || 0,
-              donorLng: task.foodId?.pickupLocation?.lng || 0,
-              ngoName: task.requestId?.ngoId?.name || "Unknown",
-              ngoPhone: task.requestId?.ngoId?.phone || "",
-              ngoAddress: task.requestId?.ngoId?.deliveryLocation?.address || "",
-              ngoLat: task.requestId?.ngoId?.deliveryLocation?.lat || 0,
-              ngoLng: task.requestId?.ngoId?.deliveryLocation?.lng || 0,
+        if (res.ok && Array.isArray(data)) {
+          const tasks = data
+            .filter((task: any) => task.status === "completed")
+            .map((task: any) => ({
+              id: task._id || task.id,
+              foodName: task.foodName || task.foodId?.foodType || task.foodId?.name || "Unknown",
+              foodDescription: task.foodDescription || task.foodId?.description || "",
+              quantity: task.quantity || task.foodId?.quantity || 0,
+              unit: task.unit || task.foodId?.unit || "",
+              donorName: task.donorName || task.foodId?.donorId?.name || "Unknown",
+              donorPhone: task.donorPhone || task.foodId?.donorId?.phone || "",
+              donorAddress: task.donorAddress || task.foodId?.pickupLocation?.address || "",
+              donorLat: task.donorLat || task.foodId?.pickupLocation?.lat || 0,
+              donorLng: task.donorLng || task.foodId?.pickupLocation?.lng || 0,
+              ngoName: task.ngoName || task.requestId?.ngoId?.name || "Unknown",
+              ngoPhone: task.ngoPhone || task.requestId?.ngoId?.phone || "",
+              ngoAddress: task.ngoAddress || task.requestId?.ngoId?.deliveryLocation?.address || "",
+              ngoLat: task.ngoLat || task.requestId?.ngoId?.deliveryLocation?.lat || 0,
+              ngoLng: task.ngoLng || task.requestId?.ngoId?.deliveryLocation?.lng || 0,
               status: task.status,
               assignedAt: task.assignedAt,
               acceptedAt: task.acceptedAt,
@@ -133,7 +133,17 @@ export default function VolunteerHistoryPage() {
     return `${minutes} mins`;
   };
 
-  const onTimePercentage = completedTasks.length > 0 ? 92 : 0;
+  // Calculate on-time percentage (deliveries completed within 4 hours)
+  const onTimeDeliveries = completedTasks.filter(t => {
+    if (!t.assignedAt || !t.completedAt) return false;
+    const assigned = new Date(t.assignedAt);
+    const completed = new Date(t.completedAt);
+    const hours = (completed.getTime() - assigned.getTime()) / (1000 * 60 * 60);
+    return hours <= 4;
+  }).length;
+  const onTimePercentage = completedTasks.length > 0 
+    ? Math.round((onTimeDeliveries / completedTasks.length) * 100) 
+    : 0;
 
   const filteredTasks = completedTasks.filter((task) => {
     const searchLower = searchQuery.toLowerCase();

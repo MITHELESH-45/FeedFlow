@@ -92,6 +92,7 @@ export default function LoginPage() {
       setUser({
         id: data.user._id || data.user.id,
         name: data.user.name,
+        email: data.user.email,
         role: data.user.role,
       });
 
