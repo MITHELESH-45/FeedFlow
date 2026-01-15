@@ -5,6 +5,7 @@ export type UserRole = "donor" | "ngo" | "volunteer" | "admin";
 export interface User {
   id: string;
   name: string;
+  email?: string;
   role: UserRole;
   status?: "pending" | "approved" | "rejected";
 }

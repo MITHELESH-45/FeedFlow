@@ -84,7 +84,9 @@ export default function RegisterPage() {
       setUser({
         id: data.user._id || data.user.id,
         name: data.user.name,
+        email: data.user.email,
         role: data.user.role,
+        status: data.user.status,
       });
 
       // Route based on role

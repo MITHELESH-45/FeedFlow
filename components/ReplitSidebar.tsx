@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -11,9 +12,50 @@ import {
   PlusCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAppStore } from "@/lib/store";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const user = useAppStore((state) => state.user);
+  const [userEmail, setUserEmail] = useState<string>("");
+
+  // Fetch email from API if not in store
+  useEffect(() => {
+    const fetchUserEmail = async () => {
+      if (user?.email) {
+        setUserEmail(user.email);
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        const res = await fetch("/api/donor/profile", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.email) {
+            setUserEmail(data.email);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch user email:", error);
+      }
+    };
+
+    fetchUserEmail();
+  }, [user]);
+
+  const userName = user?.name || "User";
+  const email = userEmail || user?.email || "";
+  const userInitials = userName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/" },
@@ -69,15 +111,17 @@ export function Sidebar() {
       <div className="p-4 border-t border-white/5">
         <div className="bg-card p-4 rounded-xl border border-white/5 flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-500 font-bold">
-            JD
+            {userInitials}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold truncate">
-              John Doe
+              {userName}
             </p>
-            <p className="text-xs text-muted-foreground truncate">
-              john@example.com
-            </p>
+            {email && (
+              <p className="text-xs text-muted-foreground truncate">
+                {email}
+              </p>
+            )}
           </div>
         </div>
 
