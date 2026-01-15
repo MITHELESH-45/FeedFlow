@@ -30,6 +30,19 @@ interface Donation {
   status: string;
   createdAt: string;
   requestCount?: number;
+  approvedRequest?: {
+    ngoId?: string;
+    ngoName?: string;
+    ngoPhone?: string;
+    quantity?: number;
+  } | null;
+  assignedVolunteer?: {
+    volunteerId?: string;
+    volunteerName?: string;
+    volunteerEmail?: string;
+    volunteerPhone?: string;
+    taskStatus?: string;
+  } | null;
 }
 
 export default function FoodHistory() {
@@ -198,6 +211,20 @@ export default function FoodHistory() {
                         <div className="flex items-center gap-2 text-sm text-gray-400">
                           <Users className="w-4 h-4 text-teal-500" />
                           <span>{donation.requestCount} request{donation.requestCount !== 1 ? 's' : ''}</span>
+                        </div>
+                      )}
+
+                      {donation.approvedRequest && (
+                        <div className="flex items-center gap-2 text-sm text-teal-400">
+                          <User className="w-4 h-4 text-teal-500" />
+                          <span>NGO: {donation.approvedRequest.ngoName || "Assigned"}</span>
+                        </div>
+                      )}
+
+                      {donation.assignedVolunteer && (
+                        <div className="flex items-center gap-2 text-sm text-blue-400">
+                          <User className="w-4 h-4 text-blue-500" />
+                          <span>Volunteer: {donation.assignedVolunteer.volunteerName || "Assigned"}</span>
                         </div>
                       )}
                     </div>

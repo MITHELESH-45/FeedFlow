@@ -103,9 +103,58 @@ export async function GET(request: NextRequest) {
 
     const foods = await Food.find({ donorId: user._id })
       .sort({ createdAt: -1 })
-      .populate("donorId", "name email phone");
+      .populate("donorId", "name email phone")
+      .lean();
 
-    return NextResponse.json(foods);
+    // Enrich foods with Request and Task data (NGO and volunteer info)
+    const Request = (await import("@/lib/models/Request")).default;
+    const Task = (await import("@/lib/models/Task")).default;
+    const User = (await import("@/lib/models/User")).default;
+
+    const enrichedFoods = await Promise.all(
+      foods.map(async (food: any) => {
+        // Find approved request for this food
+        const approvedRequest = await Request.findOne({
+          foodId: food._id,
+          status: "approved",
+        })
+          .populate("ngoId", "name phone deliveryLocation")
+          .lean();
+
+        // Find task for this request (if volunteer assigned)
+        let task = null;
+        if (approvedRequest) {
+          task = await Task.findOne({
+            requestId: approvedRequest._id,
+          })
+            .populate("volunteerId", "name email phone")
+            .lean();
+        }
+
+        return {
+          ...food,
+          approvedRequest: approvedRequest
+            ? {
+                ngoId: approvedRequest.ngoId?._id,
+                ngoName: approvedRequest.ngoId?.name,
+                ngoPhone: approvedRequest.ngoId?.phone,
+                quantity: approvedRequest.quantity,
+              }
+            : null,
+          assignedVolunteer: task?.volunteerId
+            ? {
+                volunteerId: task.volunteerId._id,
+                volunteerName: task.volunteerId.name,
+                volunteerEmail: task.volunteerId.email,
+                volunteerPhone: task.volunteerId.phone,
+                taskStatus: task.status,
+              }
+            : null,
+        };
+      })
+    );
+
+    return NextResponse.json(enrichedFoods);
   } catch (error: any) {
     console.error("Get foods error:", error);
     return NextResponse.json(
@@ -114,5 +163,8 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+
+
 
 

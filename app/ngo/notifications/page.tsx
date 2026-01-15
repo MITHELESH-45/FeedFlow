@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,82 +19,60 @@ import {
   Info,
 } from "lucide-react";
 
-// Mock NGO notifications
-const notificationsData = [
-  {
-    id: "1",
-    type: "request_approved",
-    title: "Food Request Approved",
-    message: "Your request for 30 meals from Restaurant ABC has been approved by admin. A volunteer will be assigned soon.",
-    timestamp: "2024-01-15T10:30:00",
-    read: false,
-    priority: "high",
-    foodId: "f1",
-  },
-  {
-    id: "2",
-    type: "volunteer_assigned",
-    title: "Volunteer Assigned",
-    message: "John Doe has been assigned to deliver 20 kg packaged food from Grocery Store XYZ.",
-    timestamp: "2024-01-15T09:15:00",
-    read: false,
-    priority: "medium",
-    requestId: "req2",
-  },
-  {
-    id: "3",
-    type: "delivery_in_transit",
-    title: "Food In Transit",
-    message: "Your requested food (40 meals) from Hotel Paradise is now in transit. Expected arrival in 30 minutes.",
-    timestamp: "2024-01-15T08:00:00",
-    read: true,
-    priority: "high",
-    requestId: "req3",
-  },
-  {
-    id: "4",
-    type: "delivery_reached",
-    title: "Food Delivered - Confirmation Required",
-    message: "Food has reached your location. Please confirm delivery and provide feedback.",
-    timestamp: "2024-01-14T18:00:00",
-    read: false,
-    priority: "high",
-    requestId: "req4",
-  },
-  {
-    id: "5",
-    type: "request_rejected",
-    title: "Request Rejected",
-    message: "Your request for 50 meals from Cafe Delight was rejected. Reason: Quantity exceeds available stock.",
-    timestamp: "2024-01-14T15:00:00",
-    read: true,
-    priority: "low",
-    requestId: "req5",
-  },
-  {
-    id: "6",
-    type: "new_food_available",
-    title: "New Food Available",
-    message: "Fresh cooked meals (100 portions) now available from Downtown Restaurant.",
-    timestamp: "2024-01-14T12:00:00",
-    read: true,
-    priority: "medium",
-    foodId: "f5",
-  },
-  {
-    id: "7",
-    type: "account_approved",
-    title: "NGO Account Approved",
-    message: "Congratulations! Your NGO account has been approved by admin. You can now request food donations.",
-    timestamp: "2024-01-13T10:00:00",
-    read: true,
-    priority: "high",
-  },
-];
+interface Notification {
+  id: string;
+  _id?: string;
+  type: string;
+  title: string;
+  message: string;
+  timestamp?: string;
+  createdAt?: string;
+  read: boolean;
+  priority?: string;
+  foodId?: string;
+  requestId?: string;
+}
 
 export default function NGONotificationsPage() {
-  const [notifications, setNotifications] = useState(notificationsData);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [activeTab, setActiveTab] = useState("all");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch("/api/notifications", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await res.json();
+        if (res.ok && data.notifications) {
+          // Map API notifications to component format
+          const mappedNotifications: Notification[] = data.notifications.map((n: any) => ({
+            id: n._id || n.id,
+            _id: n._id,
+            type: n.type || "general",
+            title: n.title,
+            message: n.message,
+            timestamp: n.createdAt || n.timestamp,
+            createdAt: n.createdAt,
+            read: n.read || false,
+            priority: n.priority || "medium",
+            foodId: n.foodId,
+            requestId: n.requestId,
+          }));
+          setNotifications(mappedNotifications);
+        }
+      } catch (error) {
+        console.error("Failed to fetch notifications:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchNotifications();
+  }, []);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -117,21 +95,50 @@ export default function NGONotificationsPage() {
     }
   };
 
-  const markAsRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((notif) => (notif.id === id ? { ...notif, read: true } : notif))
-    );
+  const markAsRead = async (id: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      await fetch(`/api/notifications/${id}/read`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setNotifications((prev) =>
+        prev.map((notif) => (notif.id === id ? { ...notif, read: true } : notif))
+      );
+    } catch (error) {
+      console.error("Failed to mark as read:", error);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((notif) => ({ ...notif, read: true })));
+  const markAllAsRead = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
+      await Promise.all(
+        unreadIds.map(id =>
+          fetch(`/api/notifications/${id}/read`, {
+            method: "PATCH",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          })
+        )
+      );
+      setNotifications((prev) => prev.map((notif) => ({ ...notif, read: true })));
+    } catch (error) {
+      console.error("Failed to mark all as read:", error);
+    }
   };
 
   const deleteNotification = (id: string) => {
+    // Note: Backend doesn't have delete endpoint, so we just remove from UI
     setNotifications((prev) => prev.filter((notif) => notif.id !== id));
   };
 
   const clearAll = () => {
+    // Note: Backend doesn't have clear all endpoint, so we just clear UI
     setNotifications([]);
   };
 
@@ -169,19 +176,34 @@ export default function NGONotificationsPage() {
     }
   };
 
-  const formatTime = (timestamp: string) => {
+  const formatTime = (timestamp?: string) => {
+    if (!timestamp) return "Just now";
     const date = new Date(timestamp);
     const now = new Date();
     const diff = now.getTime() - date.getTime();
+    const minutes = Math.floor(diff / (1000 * 60));
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const days = Math.floor(hours / 24);
 
     if (days > 0) return `${days}d ago`;
     if (hours > 0) return `${hours}h ago`;
+    if (minutes > 0) return `${minutes}m ago`;
     return "Just now";
   };
 
   const filteredNotifications = getFilteredNotifications();
+
+  if (loading) {
+    return (
+      <div className="flex h-screen bg-[#0a0a0a] text-foreground overflow-hidden">
+        <main className="flex-1 flex flex-col h-full relative overflow-y-auto">
+          <div className="p-4 md:p-8 space-y-6 max-w-5xl mx-auto w-full pb-24 md:pb-20">
+            <div className="text-center py-12 text-gray-400">Loading notifications...</div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-[#0a0a0a] text-foreground overflow-hidden">
@@ -334,7 +356,7 @@ export default function NGONotificationsPage() {
                               )}`}
                             />
                             <span className="text-xs text-gray-500">
-                              {formatTime(notification.timestamp)}
+                              {formatTime(notification.timestamp || notification.createdAt)}
                             </span>
                           </div>
                         </div>

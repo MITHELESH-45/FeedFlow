@@ -28,6 +28,19 @@ type FoodResponse = {
     | "completed"
     | "expired"
     | "cancelled";
+  approvedRequest?: {
+    ngoId?: string;
+    ngoName?: string;
+    ngoPhone?: string;
+    quantity?: number;
+  } | null;
+  assignedVolunteer?: {
+    volunteerId?: string;
+    volunteerName?: string;
+    volunteerEmail?: string;
+    volunteerPhone?: string;
+    taskStatus?: string;
+  } | null;
 };
 
 export function FoodCard({ food }: { food: FoodResponse }) {
@@ -195,6 +208,43 @@ export function FoodCard({ food }: { food: FoodResponse }) {
               </p>
             </div>
           </div>
+
+          {/* NGO & Volunteer Info */}
+          {(food.approvedRequest || food.assignedVolunteer) && (
+            <div className="space-y-3">
+              {food.approvedRequest && (
+                <div className="bg-gray-800/50 p-4 rounded-lg">
+                  <div className="flex items-center gap-2 text-gray-400 mb-2">
+                    <User className="w-4 h-4 text-teal-500" />
+                    <span className="text-sm font-medium">Assigned NGO</span>
+                  </div>
+                  <p className="text-white font-semibold">{food.approvedRequest.ngoName || "NGO Name"}</p>
+                  {food.approvedRequest.ngoPhone && (
+                    <p className="text-sm text-gray-400 mt-1">Phone: {food.approvedRequest.ngoPhone}</p>
+                  )}
+                  {food.approvedRequest.quantity && (
+                    <p className="text-sm text-gray-400 mt-1">Requested: {food.approvedRequest.quantity}</p>
+                  )}
+                </div>
+              )}
+              
+              {food.assignedVolunteer && (
+                <div className="bg-gray-800/50 p-4 rounded-lg">
+                  <div className="flex items-center gap-2 text-gray-400 mb-2">
+                    <User className="w-4 h-4 text-blue-500" />
+                    <span className="text-sm font-medium">Assigned Volunteer</span>
+                  </div>
+                  <p className="text-white font-semibold">{food.assignedVolunteer.volunteerName || "Volunteer Name"}</p>
+                  {food.assignedVolunteer.volunteerPhone && (
+                    <p className="text-sm text-gray-400 mt-1">Phone: {food.assignedVolunteer.volunteerPhone}</p>
+                  )}
+                  {food.assignedVolunteer.taskStatus && (
+                    <p className="text-sm text-gray-400 mt-1">Status: <span className="capitalize">{food.assignedVolunteer.taskStatus.replace("_", " ")}</span></p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Additional Info */}
           <div className="bg-gray-800/50 p-4 rounded-lg">

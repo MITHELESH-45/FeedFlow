@@ -52,7 +52,7 @@ export default function DonorDashboard() {
           // Transform data for FoodCard component
           const transformed = donationsData.slice(0, 6).map((food: any) => ({
             id: food._id || food.id,
-            title: food.name,
+            title: food.name || food.foodType,
             description: food.description,
             imageUrl: food.imageUrl || "/placeholder-food.jpg",
             quantity: `${food.quantity} ${food.unit}`,
@@ -60,6 +60,8 @@ export default function DonorDashboard() {
             expiryTime: new Date(food.expiryTime).toLocaleString(),
             pickupAddress: food.pickupLocation?.address || "Address not provided",
             status: food.status,
+            approvedRequest: food.approvedRequest || null,
+            assignedVolunteer: food.assignedVolunteer || null,
           }));
           setRecentDonations(transformed);
         }
