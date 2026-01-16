@@ -194,7 +194,7 @@ export default function LocationPicker({
   }
 
   return (
-    <div className="w-full h-[340px] rounded-xl overflow-hidden border border-white/10 bg-gray-900/40 p-3 flex flex-col gap-3">
+    <div className="w-full h-[220px] md:h-[340px] rounded-xl overflow-hidden border border-white/10 bg-gray-900/40 p-3 flex flex-col gap-3">
       <form onSubmit={handleSearch} className="flex gap-2">
         <input
           type="text"

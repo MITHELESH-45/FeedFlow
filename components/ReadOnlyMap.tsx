@@ -87,7 +87,7 @@ export default function ReadOnlyMap({
   }
 
   return (
-    <div className="w-full h-[300px] rounded-lg overflow-hidden border border-gray-700">
+    <div className="w-full h-[220px] md:h-[300px] rounded-lg overflow-hidden border border-gray-700">
       <MapContainer
         center={dropLocation ? [(pickupLocation.lat + dropLocation.lat) / 2, (pickupLocation.lng + dropLocation.lng) / 2] : [pickupLocation.lat, pickupLocation.lng]}
         zoom={dropLocation ? 12 : 13}
