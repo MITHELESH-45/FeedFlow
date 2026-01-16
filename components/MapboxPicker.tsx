@@ -19,22 +19,22 @@ export default function MapboxPicker({
 
   const handleMapClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!mapRef.current) return;
-    
+
     const rect = mapRef.current.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
-    
+
     // Convert pixel position to approximate lat/lng
     // This is a simplified calculation for demo purposes
     const lat = initialLat + ((rect.height / 2 - y) / rect.height) * 0.05;
     const lng = initialLng + ((x - rect.width / 2) / rect.width) * 0.05;
-    
+
     setMarkerPosition({ x, y, lat, lng });
     onLocationSelect(lat, lng);
   };
 
   return (
-    <div className="w-full h-[300px] rounded-xl overflow-hidden border border-gray-700 relative">
+    <div className="w-full h-[220px] md:h-[300px] rounded-xl overflow-hidden border border-gray-700 relative">
       {/* Background map image using OpenStreetMap tiles */}
       <div
         ref={mapRef}
@@ -49,7 +49,7 @@ export default function MapboxPicker({
       >
         {/* Grid overlay for better visual */}
         <div className="absolute inset-0 bg-gradient-to-br from-teal-500/5 to-blue-500/5" />
-        
+
         {/* Instructions */}
         {!markerPosition && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -59,7 +59,7 @@ export default function MapboxPicker({
             </div>
           </div>
         )}
-        
+
         {/* Marker */}
         {markerPosition && (
           <div

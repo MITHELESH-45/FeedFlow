@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +19,7 @@ import {
   Save,
   X,
   CheckCircle2,
+  LogOut,
 } from "lucide-react";
 
 export default function NGOProfilePage() {
@@ -424,6 +426,24 @@ export default function NGOProfilePage() {
                 >
                   Update
                 </Button>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-red-500/10 rounded-lg border border-red-500/50">
+                <div>
+                  <p className="text-red-400 font-medium">Log Out</p>
+                  <p className="text-red-400/70 text-sm">Sign out of your account</p>
+                </div>
+                <Link href="/login">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-red-500 text-red-400 hover:bg-red-500/10"
+                    onClick={() => localStorage.removeItem("token")}
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Log Out
+                  </Button>
+                </Link>
               </div>
             </div>
           </Card>

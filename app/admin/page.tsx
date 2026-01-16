@@ -5,12 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { 
-  Users, 
-  Package, 
-  TrendingUp, 
-  AlertCircle, 
-  CheckCircle, 
+import {
+  Users,
+  Package,
+  TrendingUp,
+  AlertCircle,
+  CheckCircle,
   Clock,
   XCircle,
   Truck
@@ -50,7 +50,7 @@ export default function AdminPage() {
 
           // Fetch recent activity from notifications or recent records
           const activity: any[] = [];
-          
+
           // Get recent NGOs
           const ngosRes = await fetch("/api/admin/ngos?status=pending", {
             headers: { Authorization: `Bearer ${token}` },
@@ -244,34 +244,34 @@ export default function AdminPage() {
           ) : (
             <div className="space-y-4">
               {recentActivity.map((activity) => (
-              <div key={activity.id} className="flex items-start justify-between border-b pb-4 last:border-0">
-                <div className="flex items-start gap-3">
-                  {activity.type === "ngo_registered" && (
-                    <div className="rounded-full bg-blue-100 p-2">
-                      <Users className="h-4 w-4 text-blue-600" />
+                <div key={activity.id} className="flex items-start justify-between border-b pb-4 last:border-0">
+                  <div className="flex items-start gap-3">
+                    {activity.type === "ngo_registered" && (
+                      <div className="rounded-full bg-blue-100 p-2">
+                        <Users className="h-4 w-4 text-blue-600" />
+                      </div>
+                    )}
+                    {activity.type === "request_submitted" && (
+                      <div className="rounded-full bg-orange-100 p-2">
+                        <AlertCircle className="h-4 w-4 text-orange-600" />
+                      </div>
+                    )}
+                    {activity.type === "delivery_completed" && (
+                      <div className="rounded-full bg-green-100 p-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      </div>
+                    )}
+                    {activity.type === "food_expired" && (
+                      <div className="rounded-full bg-red-100 p-2">
+                        <XCircle className="h-4 w-4 text-red-600" />
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-sm">{activity.message}</p>
+                      <p className="text-xs text-muted-foreground">{activity.time}</p>
                     </div>
-                  )}
-                  {activity.type === "request_submitted" && (
-                    <div className="rounded-full bg-orange-100 p-2">
-                      <AlertCircle className="h-4 w-4 text-orange-600" />
-                    </div>
-                  )}
-                  {activity.type === "delivery_completed" && (
-                    <div className="rounded-full bg-green-100 p-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                    </div>
-                  )}
-                  {activity.type === "food_expired" && (
-                    <div className="rounded-full bg-red-100 p-2">
-                      <XCircle className="h-4 w-4 text-red-600" />
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-sm">{activity.message}</p>
-                    <p className="text-xs text-muted-foreground">{activity.time}</p>
                   </div>
                 </div>
-              </div>
               ))}
             </div>
           )}

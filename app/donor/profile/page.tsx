@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,7 @@ import {
   Camera,
   Award,
   Package,
+  LogOut,
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 
@@ -40,7 +42,7 @@ export default function DonorProfilePage() {
     const fetchProfile = async () => {
       try {
         const token = localStorage.getItem("token");
-        
+
         // Fetch profile
         const profileRes = await fetch("/api/donor/profile", {
           headers: {
@@ -425,6 +427,24 @@ export default function DonorProfilePage() {
                 <Button variant="outline" size="sm" className="border-red-500 text-red-400 hover:bg-red-500/10">
                   Delete
                 </Button>
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-gray-900/50 rounded-lg border border-gray-800">
+                <div>
+                  <p className="text-white font-medium">Log Out</p>
+                  <p className="text-gray-400 text-sm">Sign out of your account</p>
+                </div>
+                <Link href="/login">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-gray-700 hover:bg-white/10"
+                    onClick={() => localStorage.removeItem("token")}
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Log Out
+                  </Button>
+                </Link>
               </div>
             </div>
           </Card>
