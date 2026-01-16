@@ -23,7 +23,7 @@ export default function VolunteerProfilePage() {
     const fetchProfile = async () => {
       try {
         const token = localStorage.getItem("token");
-        
+
         // Fetch profile
         const profileRes = await fetch("/api/volunteer/profile", {
           headers: {
@@ -47,9 +47,9 @@ export default function VolunteerProfilePage() {
           },
         });
         const tasksData = await tasksRes.json();
-        if (tasksRes.ok) {
-          const completed = tasksData.tasks.filter((t: any) => t.status === "completed").length;
-          const active = tasksData.tasks.filter((t: any) => 
+        if (tasksRes.ok && Array.isArray(tasksData)) {
+          const completed = tasksData.filter((t: any) => t.status === "completed").length;
+          const active = tasksData.filter((t: any) =>
             t.status !== "completed" && t.status !== "cancelled"
           ).length;
           setStats({ completedDeliveries: completed, activeDeliveries: active });
@@ -153,84 +153,84 @@ export default function VolunteerProfilePage() {
             </CardTitle>
             <CardDescription className="text-gray-400">Your performance and achievements</CardDescription>
           </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
-              <div className="text-3xl md:text-4xl font-bold text-green-500 mb-1">
-                {stats.completedDeliveries}
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+                <div className="text-3xl md:text-4xl font-bold text-green-500 mb-1">
+                  {stats.completedDeliveries}
+                </div>
+                <div className="text-sm text-gray-400">Completed Deliveries</div>
               </div>
-              <div className="text-sm text-gray-400">Completed Deliveries</div>
-            </div>
-            <div className="text-center p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-              <div className="text-3xl md:text-4xl font-bold text-blue-500 mb-1">
-                {stats.activeDeliveries}
+              <div className="text-center p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                <div className="text-3xl md:text-4xl font-bold text-blue-500 mb-1">
+                  {stats.activeDeliveries}
+                </div>
+                <div className="text-sm text-gray-400">Active Deliveries</div>
               </div>
-              <div className="text-sm text-gray-400">Active Deliveries</div>
-            </div>
-            <div className="text-center p-4 bg-teal-500/10 border border-teal-500/30 rounded-lg">
-              <div className="text-3xl md:text-4xl font-bold text-teal-500 mb-1">
-                {stats.completedDeliveries > 0 ? "100%" : "0%"}
+              <div className="text-center p-4 bg-teal-500/10 border border-teal-500/30 rounded-lg">
+                <div className="text-3xl md:text-4xl font-bold text-teal-500 mb-1">
+                  {stats.completedDeliveries > 0 ? "100%" : "0%"}
+                </div>
+                <div className="text-sm text-gray-400">Success Rate</div>
               </div>
-              <div className="text-sm text-gray-400">Success Rate</div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Quick Actions */}
-      <Card className="bg-gray-900/50 border-gray-800">
-        <CardHeader>
-          <CardTitle className="text-white">Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Button
-            variant="outline"
-            className="w-full justify-start bg-gray-800 border-gray-700 text-white hover:bg-gray-700 hover:text-white"
-            onClick={() => router.push("/volunteer")}
-          >
-            <Package className="mr-2 h-4 w-4" />
-            View Active Tasks
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full justify-start bg-gray-800 border-gray-700 text-white hover:bg-gray-700 hover:text-white"
-            onClick={() => router.push("/volunteer/history")}
-          >
-            <Calendar className="mr-2 h-4 w-4" />
-            View Task History
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full justify-start bg-gray-800 border-gray-700 text-white hover:bg-gray-700 hover:text-white"
-            onClick={() => router.push("/volunteer/notifications")}
-          >
-            <Award className="mr-2 h-4 w-4" />
-            View Notifications
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Logout */}
-      <Card className="bg-gray-900/50 border-red-500/50">
-        <CardContent className="py-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h3 className="font-semibold text-white mb-1">Logout</h3>
-              <p className="text-sm text-gray-400">
-                Sign out of your volunteer account
-              </p>
-            </div>
+        {/* Quick Actions */}
+        <Card className="bg-gray-900/50 border-gray-800">
+          <CardHeader>
+            <CardTitle className="text-white">Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
             <Button
-              variant="destructive"
-              onClick={handleLogout}
-              className="w-full md:w-auto bg-red-500 hover:bg-red-600"
+              variant="outline"
+              className="w-full justify-start bg-gray-800 border-gray-700 text-white hover:bg-gray-700 hover:text-white"
+              onClick={() => router.push("/volunteer")}
             >
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
+              <Package className="mr-2 h-4 w-4" />
+              View Active Tasks
             </Button>
-          </div>
-        </CardContent>
-      </Card>
+            <Button
+              variant="outline"
+              className="w-full justify-start bg-gray-800 border-gray-700 text-white hover:bg-gray-700 hover:text-white"
+              onClick={() => router.push("/volunteer/history")}
+            >
+              <Calendar className="mr-2 h-4 w-4" />
+              View Task History
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start bg-gray-800 border-gray-700 text-white hover:bg-gray-700 hover:text-white"
+              onClick={() => router.push("/volunteer/notifications")}
+            >
+              <Award className="mr-2 h-4 w-4" />
+              View Notifications
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Logout */}
+        <Card className="bg-gray-900/50 border-red-500/50">
+          <CardContent className="py-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h3 className="font-semibold text-white mb-1">Logout</h3>
+                <p className="text-sm text-gray-400">
+                  Sign out of your volunteer account
+                </p>
+              </div>
+              <Button
+                variant="destructive"
+                onClick={handleLogout}
+                className="w-full md:w-auto bg-red-500 hover:bg-red-600"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
