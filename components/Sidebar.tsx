@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useAppStore } from "@/lib/store";
 import {
   LayoutGrid,
   Plus,
@@ -55,51 +57,112 @@ const adminNavigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const user = useAppStore((state) => state.user);
+  const [userEmail, setUserEmail] = useState<string>("");
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+
+  // Close sidebar when route changes
+  useEffect(() => {
+    setIsMobileOpen(false);
+  }, [pathname]);
+
+  // Fetch email from API if not in store
+  useEffect(() => {
+    const fetchUserEmail = async () => {
+      if (user?.email) {
+        setUserEmail(user.email);
+        return;
+      }
+
+      // If email not in store, try to get it from API
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        // Determine which profile endpoint to use based on role
+        let endpoint = "/api/donor/profile";
+        if (user?.role === "ngo") endpoint = "/api/ngo/profile";
+        else if (user?.role === "volunteer") endpoint = "/api/volunteer/profile";
+        else if (user?.role === "admin") endpoint = "/api/admin/profile";
+
+        const res = await fetch(endpoint, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.email) {
+            setUserEmail(data.email);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch user email:", error);
+      }
+    };
+
+    fetchUserEmail();
+  }, [user]);
 
   // Determine which navigation to use based on current route
   let navigation = donorNavigation;
   let portalName = "Donor Portal";
-  let userName = "John Restaurant";
-  let userEmail = "donor@feedflow.com";
-  let userInitial = "J";
 
   if (pathname.startsWith("/ngo")) {
     navigation = ngoNavigation;
     portalName = "NGO Portal";
-    userName = "Food Bank NYC";
-    userEmail = "ngo@feedflow.com";
-    userInitial = "F";
   } else if (pathname.startsWith("/volunteer")) {
     navigation = volunteerNavigation;
     portalName = "Volunteer Portal";
-    userName = "John Volunteer";
-    userEmail = "volunteer@feedflow.com";
-    userInitial = "J";
   } else if (pathname.startsWith("/admin")) {
     navigation = adminNavigation;
     portalName = "Admin Portal";
-    userName = "Admin User";
-    userEmail = "admin@feedflow.com";
-    userInitial = "A";
   }
+
+  // Get user data from store or use defaults
+  const userName = user?.name || "User";
+  const email = userEmail || user?.email || "";
+  const userInitial = userName.charAt(0).toUpperCase();
 
   return (
     <>
-      {/* Desktop Sidebar */}
-      <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 bg-[#0d1f1a] border-r border-white/5 z-40">
+      {/* Mobile Overlay */}
+      {isMobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm"
+          onClick={() => setIsMobileOpen(false)}
+        />
+      )}
+
+      {/* Sidebar - Desktop & Mobile */}
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 w-64 flex flex-col bg-[#0d1f1a] border-r border-white/5 transition-transform duration-300 ease-in-out md:translate-x-0",
+          !isMobileOpen && "-translate-x-full"
+        )}
+      >
         <div className="flex-1 flex flex-col min-h-0">
           {/* Logo Section */}
           <div className="p-6 border-b border-white/10">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-teal-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                <svg className="w-6 h-6 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-teal-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <svg className="w-6 h-6 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-white font-bold text-lg whitespace-nowrap">FeedFlow</h1>
+                  <p className="text-teal-400 text-xs truncate">{portalName}</p>
+                </div>
+              </div>
+              {/* Close Button for Mobile */}
+              <button
+                onClick={() => setIsMobileOpen(false)}
+                className="md:hidden p-2 text-gray-400 hover:text-white"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
-              </div>
-              <div className="min-w-0 flex-1">
-                <h1 className="text-white font-bold text-lg whitespace-nowrap">FeedFlow</h1>
-                <p className="text-teal-400 text-xs truncate">{portalName}</p>
-              </div>
+              </button>
             </div>
 
             {/* User Profile */}
@@ -109,7 +172,9 @@ export function Sidebar() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-white font-medium text-sm truncate">{userName}</p>
-                <p className="text-teal-400 text-xs truncate">{userEmail}</p>
+                {email && (
+                  <p className="text-teal-400 text-xs truncate">{email}</p>
+                )}
               </div>
             </div>
           </div>
@@ -139,7 +204,13 @@ export function Sidebar() {
           {/* Logout */}
           <div className="p-4 border-t border-white/10">
             <Link href="/login">
-              <button className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200 w-full">
+              <button
+                className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200 w-full"
+                onClick={() => {
+                  localStorage.removeItem("token");
+                  setIsMobileOpen(false);
+                }}
+              >
                 <LogOut className="w-5 h-5" />
                 Logout
               </button>
@@ -148,26 +219,26 @@ export function Sidebar() {
         </div>
       </aside>
 
-      {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-[#0d1f1a] border-b border-white/10 px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-teal-500/20 rounded-lg flex items-center justify-center">
-              <svg className="w-5 h-5 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-white font-bold text-base">FeedFlow</h1>
-              <p className="text-teal-400 text-[10px]">{portalName}</p>
-            </div>
-          </div>
-          <div className="w-8 h-8 bg-teal-500/30 rounded-full flex items-center justify-center">
-            <span className="text-teal-400 font-semibold text-sm">{userInitial}</span>
-          </div>
-        </div>
-      </div>
+      {/* Mobile Toggle Button - Floating */}
+      {!isMobileOpen && (
+        <button
+          onClick={() => setIsMobileOpen(true)}
+          className="md:hidden fixed top-4 left-4 z-40 bg-[#0d1f1a]/80 backdrop-blur-md border border-white/10 p-2 rounded-lg text-white hover:bg-white/10 shadow-lg transition-all"
+        >
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      )}
     </>
   );
 }
+
+
+
+
+
+
+
+
 

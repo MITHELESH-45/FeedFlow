@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -13,59 +13,65 @@ import {
   User,
 } from "lucide-react";
 
-/* 🔹 MOCK FOOD DONATIONS DATA */
-const mockDonations = [
-  {
-    id: "1",
-    title: "Cooked Meals",
-    imageUrl: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&auto=format&fit=crop&q=60",
-    quantity: "50 servings",
-    expiryTime: "Jan 3, 8:00 PM",
-    pickupAddress: "123 Main St, New York, NY",
-    status: "completed" as const,
-    ngo: "Hope Foundation",
-    volunteer: "Mike Driver",
-  },
-  {
-    id: "2",
-    title: "Bakery Items",
-    imageUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=800&auto=format&fit=crop&q=60",
-    quantity: "30 pieces",
-    expiryTime: "Jan 4, 6:00 AM",
-    pickupAddress: "456 Broadway, New York, NY",
-    status: "picked_up" as const,
-    ngo: "Hope Foundation",
-    volunteer: "Mike Driver",
-  },
-  {
-    id: "3",
-    title: "Fresh Produce",
-    imageUrl: "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=800&auto=format&fit=crop&q=60",
-    quantity: "20 kg",
-    expiryTime: "Jan 5, 5:00 AM",
-    pickupAddress: "789 Park Ave, New York, NY",
-    status: "approved" as const,
-    ngo: "Hope Foundation",
-    volunteer: null,
-  },
-  {
-    id: "4",
-    title: "Packaged Food",
-    imageUrl: "https://images.unsplash.com/photo-1528736235302-52922df5c122?w=800&auto=format&fit=crop&q=60",
-    quantity: "100 packets",
-    expiryTime: "Jan 10, 9:00 AM",
-    pickupAddress: "321 5th Ave, New York, NY",
-    status: "available" as const,
-    ngo: null,
-    volunteer: null,
-  },
-];
-
 type Status = "all" | "available" | "requested" | "approved" | "picked_up" | "completed" | "expired";
+
+interface Donation {
+  _id: string;
+  foodType: string;
+  imageUrl?: string;
+  quantity: number;
+  unit: string;
+  expiryTime: string;
+  pickupLocation: {
+    address: string;
+    lat: number;
+    lng: number;
+  };
+  status: string;
+  createdAt: string;
+  requestCount?: number;
+  approvedRequest?: {
+    ngoId?: string;
+    ngoName?: string;
+    ngoPhone?: string;
+    quantity?: number;
+  } | null;
+  assignedVolunteer?: {
+    volunteerId?: string;
+    volunteerName?: string;
+    volunteerEmail?: string;
+    volunteerPhone?: string;
+    taskStatus?: string;
+  } | null;
+}
 
 export default function FoodHistory() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<Status>("all");
+  const [donations, setDonations] = useState<Donation[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDonations = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch("/api/donor/donations", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setDonations(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch donations:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDonations();
+  }, []);
 
   const statusOptions: { value: Status; label: string }[] = [
     { value: "all", label: "All" },
@@ -77,8 +83,8 @@ export default function FoodHistory() {
     { value: "expired", label: "Expired" },
   ];
 
-  const filteredDonations = mockDonations.filter((donation) => {
-    const matchesSearch = donation.title.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredDonations = donations.filter((donation) => {
+    const matchesSearch = donation.foodType.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = selectedStatus === "all" || donation.status === selectedStatus;
     return matchesSearch && matchesStatus;
   });
@@ -138,76 +144,95 @@ export default function FoodHistory() {
 
           {/* Results Count */}
           <div className="text-gray-400 text-sm">
-            Showing {filteredDonations.length} of {mockDonations.length} donations
+            Showing {filteredDonations.length} of {donations.length} donations
           </div>
 
           {/* Food Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-20">
-            {filteredDonations.map((donation) => (
-              <div
-                key={donation.id}
-                className="bg-[#1a1a1a] rounded-2xl border border-white/5 overflow-hidden hover:border-teal-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-teal-500/5 flex flex-col"
-              >
-                {/* Image */}
-                <div className="relative h-48 overflow-hidden">
-                  <img
-                    src={donation.imageUrl}
-                    alt={donation.title}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute top-3 right-3">
-                    <Badge
-                      className={cn(
-                        "capitalize font-medium px-3 py-1",
-                        statusColors[donation.status]
+          {loading ? (
+            <div className="text-center py-12 text-gray-400">Loading donations...</div>
+          ) : filteredDonations.length === 0 ? (
+            <div className="text-center py-12 text-gray-400">No donations found</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-20">
+              {filteredDonations.map((donation) => (
+                <div
+                  key={donation._id}
+                  className="bg-[#1a1a1a] rounded-2xl border border-white/5 overflow-hidden hover:border-teal-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-teal-500/5 flex flex-col"
+                >
+                  {/* Image */}
+                  <div className="relative h-48 overflow-hidden bg-gray-800">
+                    {donation.imageUrl ? (
+                      <img
+                        src={donation.imageUrl}
+                        alt={donation.foodType}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="text-gray-600 text-4xl">🍽️</span>
+                      </div>
+                    )}
+                    <div className="absolute top-3 right-3">
+                      <Badge
+                        className={cn(
+                          "capitalize font-medium px-3 py-1",
+                          statusColors[donation.status] || "bg-gray-500 text-white"
+                        )}
+                      >
+                        {donation.status.replace("_", " ")}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-5 space-y-3 bg-[#0d1f1a]">
+                    <div className="flex justify-between items-start">
+                      <h3 className="text-lg font-bold text-white">
+                        {donation.foodType}
+                      </h3>
+                      <span className="text-xs text-teal-400 flex items-center gap-1">
+                        <span>🍽️</span>
+                        {donation.quantity} {donation.unit}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm text-gray-400">
+                        <Clock className="w-4 h-4 text-teal-500" />
+                        <span>Expires: {new Date(donation.expiryTime).toLocaleString()}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-sm text-gray-400">
+                        <MapPin className="w-4 h-4 text-teal-500" />
+                        <span className="truncate">{donation.pickupLocation.address}</span>
+                      </div>
+
+                      {donation.requestCount !== undefined && donation.requestCount > 0 && (
+                        <div className="flex items-center gap-2 text-sm text-gray-400">
+                          <Users className="w-4 h-4 text-teal-500" />
+                          <span>{donation.requestCount} request{donation.requestCount !== 1 ? 's' : ''}</span>
+                        </div>
                       )}
-                    >
-                      {donation.status.replace("_", " ")}
-                    </Badge>
+
+                      {donation.approvedRequest && (
+                        <div className="flex items-center gap-2 text-sm text-teal-400">
+                          <User className="w-4 h-4 text-teal-500" />
+                          <span>NGO: {donation.approvedRequest.ngoName || "Assigned"}</span>
+                        </div>
+                      )}
+
+                      {donation.assignedVolunteer && (
+                        <div className="flex items-center gap-2 text-sm text-blue-400">
+                          <User className="w-4 h-4 text-blue-500" />
+                          <span>Volunteer: {donation.assignedVolunteer.volunteerName || "Assigned"}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-
-                {/* Content */}
-                <div className="p-5 space-y-3 bg-[#0d1f1a]">
-                  <div className="flex justify-between items-start">
-                    <h3 className="text-lg font-bold text-white">
-                      {donation.title}
-                    </h3>
-                    <span className="text-xs text-teal-400 flex items-center gap-1">
-                      <span>🍽️</span>
-                      {donation.quantity}
-                    </span>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-gray-400">
-                      <Clock className="w-4 h-4 text-teal-500" />
-                      <span>Expires: {donation.expiryTime}</span>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-sm text-gray-400">
-                      <MapPin className="w-4 h-4 text-teal-500" />
-                      <span className="truncate">{donation.pickupAddress}</span>
-                    </div>
-
-                    {donation.ngo && (
-                      <div className="flex items-center gap-2 text-sm text-gray-400">
-                        <Users className="w-4 h-4 text-teal-500" />
-                        <span>NGO: {donation.ngo}</span>
-                      </div>
-                    )}
-
-                    {donation.volunteer && (
-                      <div className="flex items-center gap-2 text-sm text-gray-400">
-                        <User className="w-4 h-4 text-teal-500" />
-                        <span>Volunteer: {donation.volunteer}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </main>
     </div>

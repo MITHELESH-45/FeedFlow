@@ -77,6 +77,7 @@ export default function DonateFoodPage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -186,40 +187,37 @@ export default function DonateFoodPage() {
 
     setIsSubmitting(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      // Create food object
-      const newFood = {
-        id: Date.now().toString(),
-        title: formData.title,
-        description: formData.description,
-        foodType: formData.foodType,
-        quantity: `${formData.quantity} ${formData.unit}`,
-        preparedTime: new Date(formData.preparedTime).toLocaleString(),
-        expiryTime: new Date(formData.expiryTime).toLocaleString(),
-        imageUrl: formData.imagePreview,
-        pickupLocation: {
-          latitude: formData.latitude,
-          longitude: formData.longitude,
-          address: formData.address,
+    try {
+      const formDataToSend = new FormData();
+      formDataToSend.append("name", formData.title);
+      formDataToSend.append("description", formData.description || "");
+      formDataToSend.append("foodType", formData.foodType);
+      formDataToSend.append("quantity", formData.quantity);
+      formDataToSend.append("unit", formData.unit);
+      formDataToSend.append("preparedTime", formData.preparedTime);
+      formDataToSend.append("expiryTime", formData.expiryTime);
+      formDataToSend.append("lat", formData.latitude!.toString());
+      formDataToSend.append("lng", formData.longitude!.toString());
+      formDataToSend.append("address", formData.address || "");
+      
+      if (formData.image) {
+        formDataToSend.append("image", formData.image);
+      }
+
+      const token = localStorage.getItem("token");
+      const response = await fetch("/api/donor/food", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-        status: "available",
-        createdAt: new Date().toISOString(),
-      };
+        body: formDataToSend,
+      });
 
-      // Create notification
-      const notification = {
-        id: Date.now().toString(),
-        type: "success",
-        title: "Food Donation Created",
-        message: `Your donation "${formData.title}" has been successfully uploaded and is now available for pickup.`,
-        time: "Just now",
-        read: false,
-        category: "donation",
-      };
+      const data = await response.json();
 
-      console.log("New Food:", newFood);
-      console.log("Notification:", notification);
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create food donation");
+      }
 
       setIsSubmitting(false);
       setShowSuccess(true);
@@ -228,7 +226,11 @@ export default function DonateFoodPage() {
       setTimeout(() => {
         router.push("/donor");
       }, 2000);
-    }, 1500);
+    } catch (error: any) {
+      console.error("Error creating food donation:", error);
+      setSubmitError(error.message || "Failed to create donation");
+      setIsSubmitting(false);
+    }
   };
 
   if (showSuccess) {
@@ -509,6 +511,16 @@ export default function DonateFoodPage() {
                 </Alert>
               )}
             </Card>
+
+            {/* Submit Error */}
+            {submitError && (
+              <Alert className="bg-red-500/10 border-red-500/50">
+                <AlertCircle className="w-4 h-4 text-red-500" />
+                <AlertDescription className="text-red-400">
+                  {submitError}
+                </AlertDescription>
+              </Alert>
+            )}
 
             {/* Submit Button */}
             <div className="flex gap-4">

@@ -24,46 +24,37 @@ export default function VolunteerNotificationsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Mock notifications for volunteer
-    const mockNotifications: VolunteerNotification[] = [
-      {
-        id: "1",
-        title: "New Task Assigned",
-        message: "You have been assigned a new delivery task for Fresh Vegetables from John Doe to Hope Foundation.",
-        type: "task_assigned",
-        read: false,
-        createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-        taskId: "1",
-      },
-      {
-        id: "2",
-        title: "Task Accepted",
-        message: "You have successfully accepted the delivery task for Fresh Bread. Please proceed to pickup location.",
-        type: "task_accepted",
-        read: false,
-        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        taskId: "2",
-      },
-      {
-        id: "3",
-        title: "Delivery Completed",
-        message: "Your delivery of Canned Goods to Food Bank Central has been confirmed as completed. Great job!",
-        type: "task_completed",
-        read: true,
-        createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-        taskId: "3",
-      },
-      {
-        id: "4",
-        title: "Welcome to FeedFlow",
-        message: "Thank you for joining as a volunteer! You'll receive notifications for all task assignments and updates.",
-        type: "general",
-        read: true,
-        createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-      },
-    ];
-    setNotifications(mockNotifications);
-    setLoading(false);
+    const fetchNotifications = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch("/api/notifications", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          const mappedNotifications: VolunteerNotification[] = data.notifications.map((n: any) => ({
+            id: n._id,
+            title: n.title,
+            message: n.message,
+            type: n.type === "task_assigned" ? "task_assigned" : 
+                  n.type === "task_accepted" ? "task_accepted" :
+                  n.type === "task_completed" ? "task_completed" :
+                  n.type === "task_cancelled" ? "task_cancelled" : "general",
+            read: n.read,
+            createdAt: n.createdAt,
+            taskId: n.taskId,
+          }));
+          setNotifications(mappedNotifications);
+        }
+      } catch (error) {
+        console.error("Failed to fetch notifications:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchNotifications();
   }, [user]);
 
   const filteredNotifications = notifications.filter((n) => {
@@ -73,14 +64,41 @@ export default function VolunteerNotificationsPage() {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const markAsRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
+  const markAsRead = async (id: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      await fetch(`/api/notifications/${id}/read`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+      );
+    } catch (error) {
+      console.error("Failed to mark as read:", error);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  const markAllAsRead = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
+      await Promise.all(
+        unreadIds.map(id =>
+          fetch(`/api/notifications/${id}/read`, {
+            method: "PATCH",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          })
+        )
+      );
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    } catch (error) {
+      console.error("Failed to mark all as read:", error);
+    }
   };
 
   const getNotificationIcon = (type: VolunteerNotification["type"]) => {

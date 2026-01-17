@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { StatsCard } from "@/components/StatsCard";
 import { FoodCard } from "@/components/FoodCard";
 import { Button } from "@/components/ui/button";
+import { useAppStore } from "@/lib/store";
 import {
   Package,
   Truck,
@@ -12,40 +14,66 @@ import {
   Plus,
 } from "lucide-react";
 
-/* 🔹 TEMP DATA */
-const stats = {
-  totalUploaded: 4,
-  activeDonations: 2,
-  completedDonations: 1,
-  expiredCancelled: 0,
-};
-
-const recentDonations = [
-  {
-    id: "1",
-    title: "Fresh Produce",
-    description: "Organic vegetables and fruits",
-    imageUrl: "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=800&auto=format&fit=crop&q=60",
-    quantity: "20 kg",
-    foodType: "Produce",
-    expiryTime: "Jan 5, 5:00 AM",
-    pickupAddress: "789 Park Ave, New York, NY",
-    status: "approved" as const,
-  },
-  {
-    id: "2",
-    title: "Packaged Food",
-    description: "Ready to eat packaged meals",
-    imageUrl: "https://images.unsplash.com/photo-1528736235302-52922df5c122?w=800&auto=format&fit=crop&q=60",
-    quantity: "100 packets",
-    foodType: "Packaged",
-    expiryTime: "Jan 10, 9:00 AM",
-    pickupAddress: "321 5th Ave, New York, NY",
-    status: "available" as const,
-  },
-];
-
 export default function DonorDashboard() {
+  const user = useAppStore((state) => state.user);
+  const [stats, setStats] = useState({
+    totalUploaded: 0,
+    activeDonations: 0,
+    completedDonations: 0,
+    expiredCancelled: 0,
+  });
+  const [recentDonations, setRecentDonations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        
+        // Fetch dashboard stats
+        const statsResponse = await fetch("/api/donor/dashboard", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const statsData = await statsResponse.json();
+        if (statsResponse.ok) {
+          setStats(statsData);
+        }
+
+        // Fetch recent donations
+        const donationsResponse = await fetch("/api/donor/donations?status=all", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const donationsData = await donationsResponse.json();
+        if (donationsResponse.ok) {
+          // Transform data for FoodCard component
+          const transformed = donationsData.slice(0, 6).map((food: any) => ({
+            id: food._id || food.id,
+            title: food.name || food.foodType,
+            description: food.description,
+            imageUrl: food.imageUrl || "/placeholder-food.jpg",
+            quantity: `${food.quantity} ${food.unit}`,
+            foodType: food.foodType,
+            expiryTime: new Date(food.expiryTime).toLocaleString(),
+            pickupAddress: food.pickupLocation?.address || "Address not provided",
+            status: food.status,
+            approvedRequest: food.approvedRequest || null,
+            assignedVolunteer: food.assignedVolunteer || null,
+          }));
+          setRecentDonations(transformed);
+        }
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
   return (
     <div className="flex h-screen bg-[#0a0a0a] text-foreground overflow-hidden">
       <main className="flex-1 flex flex-col h-full relative overflow-y-auto">
@@ -54,7 +82,7 @@ export default function DonorDashboard() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <h2 className="text-2xl font-bold text-white">
-                Welcome back, John! 👋
+                Welcome back, {user?.name || "User"}! 👋
               </h2>
               <p className="text-gray-400 mt-1">
                 Here's what's happening with your food donations today.
@@ -146,3 +174,6 @@ export default function DonorDashboard() {
     </div>
   );
 }
+
+
+

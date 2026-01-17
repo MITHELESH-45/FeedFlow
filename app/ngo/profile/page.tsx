@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,34 +19,67 @@ import {
   Save,
   X,
   CheckCircle2,
+  LogOut,
 } from "lucide-react";
-
-// Mock NGO data
-const ngoData = {
-  id: "n1",
-  name: "Food Bank NYC",
-  email: "contact@foodbanknyc.org",
-  phone: "+1 (555) 987-6543",
-  address: "123 Charity Street, New York, NY 10001",
-  registrationNumber: "NGO-2024-001",
-  description: "Dedicated to fighting hunger by distributing nutritious food to those in need across New York City.",
-  website: "www.foodbanknyc.org",
-  status: "pending", // pending | approved | rejected
-  deliveryLocation: {
-    lat: 40.7128,
-    lng: -74.006,
-    address: "123 Charity St, New York, NY",
-  },
-  stats: {
-    totalRequests: 0,
-    completedDeliveries: 0,
-    totalFoodReceived: 0,
-  },
-};
 
 export default function NGOProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState(ngoData);
+  const [formData, setFormData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [stats, setStats] = useState({
+    totalRequests: 0,
+    completedDeliveries: 0,
+    totalFoodReceived: 0,
+  });
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch("/api/ngo/profile", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setFormData({
+            id: data._id,
+            name: data.name,
+            email: data.email,
+            phone: data.phone || "",
+            address: data.deliveryLocation?.address || "",
+            registrationNumber: data.organization || "",
+            description: "",
+            website: "",
+            status: data.status,
+            deliveryLocation: data.deliveryLocation,
+          });
+        }
+
+        // Fetch stats
+        const statsRes = await fetch("/api/ngo/dashboard", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const statsData = await statsRes.json();
+        if (statsRes.ok) {
+          setStats({
+            totalRequests: statsData.totalRequests || 0,
+            completedDeliveries: statsData.completedRequests || 0,
+            totalFoodReceived: 0, // This would need a separate calculation
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -56,16 +90,68 @@ export default function NGOProfilePage() {
     });
   };
 
-  const handleSave = () => {
-    console.log("Saving profile:", formData);
-    // In real app, make API call here
-    setIsEditing(false);
-    alert("Profile updated successfully!");
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/ngo/profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          phone: formData.phone,
+          organization: formData.registrationNumber,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setIsEditing(false);
+        alert("Profile updated successfully!");
+      } else {
+        alert(data.error || "Failed to update profile");
+      }
+    } catch (error) {
+      console.error("Failed to save profile:", error);
+      alert("Failed to update profile");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCancel = () => {
-    setFormData(ngoData);
     setIsEditing(false);
+    // Reload original data
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch("/api/ngo/profile", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setFormData({
+            id: data._id,
+            name: data.name,
+            email: data.email,
+            phone: data.phone || "",
+            address: data.deliveryLocation?.address || "",
+            registrationNumber: data.organization || "",
+            description: "",
+            website: "",
+            status: data.status,
+            deliveryLocation: data.deliveryLocation,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile:", error);
+      }
+    };
+    fetchProfile();
   };
 
   const getStatusBadge = () => {
@@ -82,6 +168,18 @@ export default function NGOProfilePage() {
       </Badge>
     );
   };
+
+  if (loading || !formData) {
+    return (
+      <div className="flex h-screen bg-[#0a0a0a] text-foreground overflow-hidden">
+        <main className="flex-1 flex flex-col h-full relative overflow-y-auto">
+          <div className="p-4 md:p-8 space-y-6 max-w-5xl mx-auto w-full pb-24 md:pb-20">
+            <div className="text-center py-12 text-gray-400">Loading profile...</div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-[#0a0a0a] text-foreground overflow-hidden">
@@ -106,10 +204,11 @@ export default function NGOProfilePage() {
               <div className="flex gap-2">
                 <Button
                   onClick={handleSave}
+                  disabled={saving}
                   className="bg-teal-500 hover:bg-teal-600 text-white font-semibold"
                 >
                   <Save className="w-4 h-4 mr-2" />
-                  Save Changes
+                  {saving ? "Saving..." : "Save Changes"}
                 </Button>
                 <Button
                   onClick={handleCancel}
@@ -249,13 +348,19 @@ export default function NGOProfilePage() {
               Delivery Location
             </h2>
 
-            <div className="bg-gray-800/50 p-4 rounded-lg mb-4">
-              <p className="text-gray-400 text-sm mb-2">All food will be delivered to:</p>
-              <p className="text-white font-medium">{formData.deliveryLocation.address}</p>
-              <p className="text-gray-500 text-sm mt-2">
-                Coordinates: {formData.deliveryLocation.lat.toFixed(6)}, {formData.deliveryLocation.lng.toFixed(6)}
-              </p>
-            </div>
+            {formData.deliveryLocation ? (
+              <div className="bg-gray-800/50 p-4 rounded-lg mb-4">
+                <p className="text-gray-400 text-sm mb-2">All food will be delivered to:</p>
+                <p className="text-white font-medium">{formData.deliveryLocation.address}</p>
+                <p className="text-gray-500 text-sm mt-2">
+                  Coordinates: {formData.deliveryLocation.lat.toFixed(6)}, {formData.deliveryLocation.lng.toFixed(6)}
+                </p>
+              </div>
+            ) : (
+              <div className="bg-gray-800/50 p-4 rounded-lg mb-4">
+                <p className="text-gray-400 text-sm">No delivery location set. Please set it from the dashboard.</p>
+              </div>
+            )}
 
             {isEditing && (
               <Button
@@ -275,17 +380,17 @@ export default function NGOProfilePage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-gray-800/50 p-4 rounded-lg">
                 <p className="text-gray-400 text-sm mb-1">Total Requests</p>
-                <p className="text-white font-bold text-3xl">{formData.stats.totalRequests}</p>
+                <p className="text-white font-bold text-3xl">{stats.totalRequests}</p>
               </div>
 
               <div className="bg-gray-800/50 p-4 rounded-lg">
                 <p className="text-gray-400 text-sm mb-1">Completed Deliveries</p>
-                <p className="text-white font-bold text-3xl">{formData.stats.completedDeliveries}</p>
+                <p className="text-white font-bold text-3xl">{stats.completedDeliveries}</p>
               </div>
 
               <div className="bg-gray-800/50 p-4 rounded-lg">
                 <p className="text-gray-400 text-sm mb-1">Food Received (kg)</p>
-                <p className="text-white font-bold text-3xl">{formData.stats.totalFoodReceived}</p>
+                <p className="text-white font-bold text-3xl">{stats.totalFoodReceived}</p>
               </div>
             </div>
           </Card>
@@ -321,6 +426,24 @@ export default function NGOProfilePage() {
                 >
                   Update
                 </Button>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-red-500/10 rounded-lg border border-red-500/50">
+                <div>
+                  <p className="text-red-400 font-medium">Log Out</p>
+                  <p className="text-red-400/70 text-sm">Sign out of your account</p>
+                </div>
+                <Link href="/login">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-red-500 text-red-400 hover:bg-red-500/10"
+                    onClick={() => localStorage.removeItem("token")}
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Log Out
+                  </Button>
+                </Link>
               </div>
             </div>
           </Card>

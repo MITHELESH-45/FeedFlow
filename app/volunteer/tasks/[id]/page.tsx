@@ -15,9 +15,32 @@ import {
   ArrowLeft,
   Package,
 } from "lucide-react";
-import { mockTasks, Task } from "@/mock/tasks";
 import { useAppStore } from "@/lib/store";
-import ReadOnlyMap from "@/components/ReadOnlyMap";
+import dynamic from "next/dynamic";
+
+const ReadOnlyMap = dynamic(() => import("@/components/ReadOnlyMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[300px] rounded-lg bg-gray-800 flex items-center justify-center border border-gray-700">
+      <div className="text-center">
+        <div className="w-8 h-8 border-2 border-teal-500/30 border-t-teal-500 rounded-full animate-spin mx-auto mb-2" />
+        <p className="text-gray-500 text-sm">Loading map...</p>
+      </div>
+    </div>
+  ),
+});
+
+interface Task {
+  _id: string;
+  foodId: any;
+  volunteerId: string;
+  status: string;
+  assignedAt?: string;
+  acceptedAt?: string;
+  pickedUpAt?: string;
+  reachedNgoAt?: string;
+  completedAt?: string;
+}
 
 export default function TaskDetailPage() {
   const router = useRouter();
@@ -26,64 +49,219 @@ export default function TaskDetailPage() {
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [taskData, setTaskData] = useState<any>(null);
 
   useEffect(() => {
-    // Find task by ID and verify it belongs to current volunteer
-    const foundTask = mockTasks.find(
-      (t) => t.id === params.id && t.volunteerId === user?.id
-    );
-    setTask(foundTask || null);
-    setLoading(false);
-  }, [params.id, user]);
+    const fetchTask = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(`/api/volunteer/tasks/${params.id}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setTask(data);
+          setTaskData({
+            foodName: data.foodId?.foodType || data.foodName || "Unknown",
+            foodDescription: data.foodId?.description || data.foodDescription || "",
+            quantity: data.foodId?.quantity || data.quantity || 0,
+            unit: data.foodId?.unit || data.unit || "",
+            preparedTime: data.foodId?.preparedTime || "",
+            expiryTime: data.foodId?.expiryTime || "",
+            donorName: data.foodId?.donorId?.name || data.donorName || "Unknown",
+            donorPhone: data.foodId?.donorId?.phone || data.donorPhone || "",
+            donorAddress: data.foodId?.pickupLocation?.address || data.donorAddress || "",
+            donorLat: data.foodId?.pickupLocation?.lat || data.donorLat || 0,
+            donorLng: data.foodId?.pickupLocation?.lng || data.donorLng || 0,
+            ngoName: data.requestId?.ngoId?.name || data.ngoName || "Unknown",
+            ngoPhone: data.requestId?.ngoId?.phone || data.ngoPhone || "",
+            ngoAddress: data.requestId?.ngoId?.deliveryLocation?.address || data.ngoAddress || "",
+            ngoLat: data.requestId?.ngoId?.deliveryLocation?.lat || data.ngoLat || 0,
+            ngoLng: data.requestId?.ngoId?.deliveryLocation?.lng || data.ngoLng || 0,
+            requestedQuantity: data.requestId?.quantity || 0,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch task:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (params.id) {
+      fetchTask();
+    }
+  }, [params.id]);
 
   const handleAcceptTask = async () => {
     if (!task) return;
     setUpdating(true);
-    
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    // Update task status
-    task.status = "accepted";
-    task.acceptedAt = new Date().toISOString();
-    setTask({ ...task });
-    setUpdating(false);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/volunteer/tasks/${task._id}/status`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: "accepted" }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        // Refresh task data to get latest from server
+        const refreshRes = await fetch(`/api/volunteer/tasks/${task._id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const refreshData = await refreshRes.json();
+        if (refreshRes.ok) {
+          setTask(refreshData);
+          // Update taskData with fresh data
+          setTaskData({
+            foodName: refreshData.foodId?.foodType || refreshData.foodName || "Unknown",
+            foodDescription: refreshData.foodId?.description || refreshData.foodDescription || "",
+            quantity: refreshData.foodId?.quantity || refreshData.quantity || 0,
+            unit: refreshData.foodId?.unit || refreshData.unit || "",
+            preparedTime: refreshData.foodId?.preparedTime || refreshData.preparedTime || "",
+            expiryTime: refreshData.foodId?.expiryTime || refreshData.expiryTime || "",
+            imageUrl: refreshData.foodId?.imageUrl || refreshData.imageUrl || "",
+            donorName: refreshData.foodId?.donorId?.name || refreshData.donorName || "Unknown",
+            donorPhone: refreshData.foodId?.donorId?.phone || refreshData.donorPhone || "",
+            donorAddress: refreshData.foodId?.pickupLocation?.address || refreshData.donorAddress || "",
+            donorLat: refreshData.foodId?.pickupLocation?.lat || refreshData.donorLat || 0,
+            donorLng: refreshData.foodId?.pickupLocation?.lng || refreshData.donorLng || 0,
+            ngoName: refreshData.requestId?.ngoId?.name || refreshData.ngoName || "Unknown",
+            ngoPhone: refreshData.requestId?.ngoId?.phone || refreshData.ngoPhone || "",
+            ngoAddress: refreshData.requestId?.ngoId?.deliveryLocation?.address || refreshData.ngoAddress || "",
+            ngoLat: refreshData.requestId?.ngoId?.deliveryLocation?.lat || refreshData.ngoLat || 0,
+            ngoLng: refreshData.requestId?.ngoId?.deliveryLocation?.lng || refreshData.ngoLng || 0,
+            requestedQuantity: refreshData.requestId?.quantity || refreshData.requestedQuantity || 0,
+          });
+        }
+      } else {
+        alert(data.error || "Failed to accept task");
+      }
+    } catch (error) {
+      console.error("Failed to accept task:", error);
+    } finally {
+      setUpdating(false);
+    }
   };
 
   const handlePickedUp = async () => {
     if (!task) return;
     setUpdating(true);
-    
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    // Update task status
-    task.status = "picked_up";
-    task.pickedUpAt = new Date().toISOString();
-    setTask({ ...task });
-    setUpdating(false);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/volunteer/tasks/${task._id}/status`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: "picked_up" }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        // Refresh task data to get latest from server
+        const refreshRes = await fetch(`/api/volunteer/tasks/${task._id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const refreshData = await refreshRes.json();
+        if (refreshRes.ok) {
+          setTask(refreshData);
+          // Update taskData with fresh data
+          setTaskData({
+            foodName: refreshData.foodId?.foodType || refreshData.foodName || "Unknown",
+            foodDescription: refreshData.foodId?.description || refreshData.foodDescription || "",
+            quantity: refreshData.foodId?.quantity || refreshData.quantity || 0,
+            unit: refreshData.foodId?.unit || refreshData.unit || "",
+            preparedTime: refreshData.foodId?.preparedTime || refreshData.preparedTime || "",
+            expiryTime: refreshData.foodId?.expiryTime || refreshData.expiryTime || "",
+            imageUrl: refreshData.foodId?.imageUrl || refreshData.imageUrl || "",
+            donorName: refreshData.foodId?.donorId?.name || refreshData.donorName || "Unknown",
+            donorPhone: refreshData.foodId?.donorId?.phone || refreshData.donorPhone || "",
+            donorAddress: refreshData.foodId?.pickupLocation?.address || refreshData.donorAddress || "",
+            donorLat: refreshData.foodId?.pickupLocation?.lat || refreshData.donorLat || 0,
+            donorLng: refreshData.foodId?.pickupLocation?.lng || refreshData.donorLng || 0,
+            ngoName: refreshData.requestId?.ngoId?.name || refreshData.ngoName || "Unknown",
+            ngoPhone: refreshData.requestId?.ngoId?.phone || refreshData.ngoPhone || "",
+            ngoAddress: refreshData.requestId?.ngoId?.deliveryLocation?.address || refreshData.ngoAddress || "",
+            ngoLat: refreshData.requestId?.ngoId?.deliveryLocation?.lat || refreshData.ngoLat || 0,
+            ngoLng: refreshData.requestId?.ngoId?.deliveryLocation?.lng || refreshData.ngoLng || 0,
+            requestedQuantity: refreshData.requestId?.quantity || refreshData.requestedQuantity || 0,
+          });
+        }
+      } else {
+        alert(data.error || "Failed to update task");
+      }
+    } catch (error) {
+      console.error("Failed to update task:", error);
+    } finally {
+      setUpdating(false);
+    }
   };
 
   const handleReachedNgo = async () => {
     if (!task) return;
     setUpdating(true);
-    
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    // Update task status
-    task.status = "reached_ngo";
-    task.reachedNgoAt = new Date().toISOString();
-    setTask({ ...task });
-    setUpdating(false);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/volunteer/tasks/${task._id}/status`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: "reached_ngo" }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        // Refresh task data to get latest from server
+        const refreshRes = await fetch(`/api/volunteer/tasks/${task._id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const refreshData = await refreshRes.json();
+        if (refreshRes.ok) {
+          setTask(refreshData);
+          // Update taskData with fresh data
+          setTaskData({
+            foodName: refreshData.foodId?.foodType || refreshData.foodName || "Unknown",
+            foodDescription: refreshData.foodId?.description || refreshData.foodDescription || "",
+            quantity: refreshData.foodId?.quantity || refreshData.quantity || 0,
+            unit: refreshData.foodId?.unit || refreshData.unit || "",
+            preparedTime: refreshData.foodId?.preparedTime || refreshData.preparedTime || "",
+            expiryTime: refreshData.foodId?.expiryTime || refreshData.expiryTime || "",
+            imageUrl: refreshData.foodId?.imageUrl || refreshData.imageUrl || "",
+            donorName: refreshData.foodId?.donorId?.name || refreshData.donorName || "Unknown",
+            donorPhone: refreshData.foodId?.donorId?.phone || refreshData.donorPhone || "",
+            donorAddress: refreshData.foodId?.pickupLocation?.address || refreshData.donorAddress || "",
+            donorLat: refreshData.foodId?.pickupLocation?.lat || refreshData.donorLat || 0,
+            donorLng: refreshData.foodId?.pickupLocation?.lng || refreshData.donorLng || 0,
+            ngoName: refreshData.requestId?.ngoId?.name || refreshData.ngoName || "Unknown",
+            ngoPhone: refreshData.requestId?.ngoId?.phone || refreshData.ngoPhone || "",
+            ngoAddress: refreshData.requestId?.ngoId?.deliveryLocation?.address || refreshData.ngoAddress || "",
+            ngoLat: refreshData.requestId?.ngoId?.deliveryLocation?.lat || refreshData.ngoLat || 0,
+            ngoLng: refreshData.requestId?.ngoId?.deliveryLocation?.lng || refreshData.ngoLng || 0,
+            requestedQuantity: refreshData.requestId?.quantity || refreshData.requestedQuantity || 0,
+          });
+        }
+      } else {
+        alert(data.error || "Failed to update task");
+      }
+    } catch (error) {
+      console.error("Failed to update task:", error);
+    } finally {
+      setUpdating(false);
+    }
   };
 
   const openInGoogleMaps = (lat: number, lng: number, label: string) => {
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&destination_place_id=${label}`;
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
     window.open(url, "_blank");
   };
 
-  const getStatusColor = (status: Task["status"]) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case "assigned":
         return "bg-blue-500";
@@ -100,7 +278,7 @@ export default function TaskDetailPage() {
     }
   };
 
-  const getStatusText = (status: Task["status"]) => {
+  const getStatusText = (status: string) => {
     switch (status) {
       case "assigned": return "Assigned";
       case "accepted": return "Accepted";
@@ -119,7 +297,7 @@ export default function TaskDetailPage() {
     );
   }
 
-  if (!task) {
+  if (!loading && !task) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
         <Card className="bg-gray-900/50 border-gray-800 p-8 text-center max-w-md">
@@ -131,6 +309,10 @@ export default function TaskDetailPage() {
         </Card>
       </div>
     );
+  }
+
+  if (!task || !taskData) {
+    return null;
   }
 
   return (
@@ -148,27 +330,82 @@ export default function TaskDetailPage() {
 
       <div className="px-4 md:px-6 space-y-6 max-w-2xl mx-auto">
         <Card className="bg-gray-900/50 border-gray-800 overflow-hidden">
-          <div className="flex gap-4 p-4">
-            <img
-              src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&auto=format&fit=crop&q=60"
-              alt={task.foodName}
-              className="w-24 h-24 md:w-32 md:h-32 rounded-lg object-cover flex-shrink-0"
-            />
-            <div className="flex-1 min-w-0">
-              <Badge className={`${getStatusColor(task.status)} text-white mb-2`}>
-                {getStatusText(task.status)}
-              </Badge>
-              <h1 className="text-xl md:text-2xl font-bold text-white mb-2 truncate">{task.foodName}</h1>
-              <div className="flex items-center gap-2 text-gray-400 text-sm">
-                <Package className="w-4 h-4 flex-shrink-0" />
-                <span>{task.quantity} {task.unit}</span>
+            <div className="flex gap-4 p-4">
+              <div className="w-24 h-24 md:w-32 md:h-32 rounded-lg bg-gray-800 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                {taskData.imageUrl ? (
+                  <img src={taskData.imageUrl} alt={taskData.foodName} className="w-full h-full object-cover" />
+                ) : (
+                  <Package className="w-12 h-12 text-gray-600" />
+                )}
               </div>
-              <div className="flex items-center gap-2 text-gray-400 text-sm mt-1">
-                <Clock className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate">Assigned: {new Date(task.assignedAt!).toLocaleDateString()}, {new Date(task.assignedAt!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              <div className="flex-1 min-w-0">
+                <Badge className={`${getStatusColor(task.status)} text-white mb-2`}>
+                  {getStatusText(task.status)}
+                </Badge>
+                <h1 className="text-xl md:text-2xl font-bold text-white mb-2 truncate">{taskData.foodName}</h1>
+                <div className="flex items-center gap-2 text-gray-400 text-sm">
+                  <Package className="w-4 h-4 flex-shrink-0" />
+                  <span>{taskData.quantity} {taskData.unit}</span>
+                </div>
+                {taskData.requestedQuantity > 0 && (
+                  <div className="flex items-center gap-2 text-gray-400 text-sm mt-1">
+                    <span>Requested: {taskData.requestedQuantity} {taskData.unit}</span>
+                  </div>
+                )}
+                {task.assignedAt && (
+                  <div className="flex items-center gap-2 text-gray-400 text-sm mt-1">
+                    <Clock className="w-4 h-4 flex-shrink-0" />
+                    <span className="truncate">Assigned: {new Date(task.assignedAt).toLocaleDateString()}, {new Date(task.assignedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                )}
               </div>
             </div>
-          </div>
+        </Card>
+
+        {/* Full Order Details */}
+        <Card className="bg-gray-900/50 border-gray-800">
+          <CardHeader>
+            <CardTitle className="text-white flex items-center gap-2">
+              <Package className="w-5 h-5 text-teal-500" />
+              Full Order Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-gray-800/50 p-4 rounded-lg">
+                <p className="text-sm text-gray-400 mb-1">Food Type</p>
+                <p className="text-white font-medium">{taskData.foodName}</p>
+              </div>
+              <div className="bg-gray-800/50 p-4 rounded-lg">
+                <p className="text-sm text-gray-400 mb-1">Total Quantity</p>
+                <p className="text-white font-medium">{taskData.quantity} {taskData.unit}</p>
+              </div>
+              {taskData.requestedQuantity > 0 && (
+                <div className="bg-gray-800/50 p-4 rounded-lg">
+                  <p className="text-sm text-gray-400 mb-1">Requested Quantity</p>
+                  <p className="text-white font-medium">{taskData.requestedQuantity} {taskData.unit}</p>
+                </div>
+              )}
+              {taskData.preparedTime && (
+                <div className="bg-gray-800/50 p-4 rounded-lg">
+                  <p className="text-sm text-gray-400 mb-1">Prepared Time</p>
+                  <p className="text-white font-medium">{new Date(taskData.preparedTime).toLocaleString()}</p>
+                </div>
+              )}
+              {taskData.expiryTime && (
+                <div className="bg-gray-800/50 p-4 rounded-lg">
+                  <p className="text-sm text-gray-400 mb-1">Expiry Time</p>
+                  <p className="text-white font-medium">{new Date(taskData.expiryTime).toLocaleString()}</p>
+                </div>
+              )}
+            </div>
+            {taskData.foodDescription && (
+              <div className="bg-gray-800/50 p-4 rounded-lg">
+                <p className="text-sm text-gray-400 mb-1">Description</p>
+                <p className="text-white">{taskData.foodDescription}</p>
+              </div>
+            )}
+          </CardContent>
         </Card>
 
         <Card className="bg-gray-900/50 border-gray-800">
@@ -268,21 +505,21 @@ export default function TaskDetailPage() {
           <CardContent className="space-y-3">
             <div className="flex items-center gap-2 text-gray-300">
               <User className="w-4 h-4 text-gray-500 flex-shrink-0" />
-              <span className="font-medium truncate">{task.donorName}</span>
+              <span className="font-medium truncate">{taskData.donorName}</span>
             </div>
-            {task.donorPhone && (
+            {taskData.donorPhone && (
               <div className="flex items-center gap-2 text-gray-300">
                 <Phone className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                <a href={`tel:${task.donorPhone}`} className="text-teal-500 hover:underline">{task.donorPhone}</a>
+                <a href={`tel:${taskData.donorPhone}`} className="text-teal-500 hover:underline">{taskData.donorPhone}</a>
               </div>
             )}
             <div className="flex items-start gap-2 text-gray-300">
               <MapPin className="w-4 h-4 text-gray-500 mt-1 flex-shrink-0" />
-              <span className="break-words">{task.donorAddress}</span>
+              <span className="break-words">{taskData.donorAddress}</span>
             </div>
             {task.status === "accepted" && (
               <Button
-                onClick={() => openInGoogleMaps(task.donorLat, task.donorLng, task.donorName)}
+                onClick={() => openInGoogleMaps(taskData.donorLat, taskData.donorLng, taskData.donorName)}
                 className="w-full bg-teal-500 hover:bg-teal-600 text-white"
               >
                 <Navigation className="w-4 h-4 mr-2" />
@@ -307,21 +544,21 @@ export default function TaskDetailPage() {
           <CardContent className="space-y-3">
             <div className="flex items-center gap-2 text-gray-300">
               <User className="w-4 h-4 text-gray-500 flex-shrink-0" />
-              <span className="font-medium truncate">{task.ngoName}</span>
+              <span className="font-medium truncate">{taskData.ngoName}</span>
             </div>
-            {task.ngoPhone && (
+            {taskData.ngoPhone && (
               <div className="flex items-center gap-2 text-gray-300">
                 <Phone className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                <a href={`tel:${task.ngoPhone}`} className="text-teal-500 hover:underline">{task.ngoPhone}</a>
+                <a href={`tel:${taskData.ngoPhone}`} className="text-teal-500 hover:underline">{taskData.ngoPhone}</a>
               </div>
             )}
             <div className="flex items-start gap-2 text-gray-300">
               <MapPin className="w-4 h-4 text-gray-500 mt-1 flex-shrink-0" />
-              <span className="break-words">{task.ngoAddress}</span>
+              <span className="break-words">{taskData.ngoAddress}</span>
             </div>
             {task.status === "picked_up" && (
               <Button
-                onClick={() => openInGoogleMaps(task.ngoLat, task.ngoLng, task.ngoName)}
+                onClick={() => openInGoogleMaps(taskData.ngoLat, taskData.ngoLng, taskData.ngoName)}
                 className="w-full bg-teal-500 hover:bg-teal-600 text-white"
               >
                 <Navigation className="w-4 h-4 mr-2" />
@@ -333,28 +570,47 @@ export default function TaskDetailPage() {
 
         <Card className="bg-gray-900/50 border-gray-800">
           <CardHeader>
-            <CardTitle className="text-white">Route Map (Read-Only)</CardTitle>
+            <CardTitle className="text-white flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-teal-500" />
+              Route Map
+            </CardTitle>
             <p className="text-sm text-gray-400 mt-1">
-              Use navigation buttons above to get directions
+              View pickup and drop locations. Use navigation buttons above to get directions.
             </p>
           </CardHeader>
-          <CardContent>
-            <ReadOnlyMap 
-              locations={[
-                {
-                  lat: task.donorLat,
-                  lng: task.donorLng,
-                  label: "Pickup: " + task.donorName,
-                  color: "teal"
-                },
-                {
-                  lat: task.ngoLat,
-                  lng: task.ngoLng,
-                  label: "Drop: " + task.ngoName,
-                  color: "blue"
-                }
-              ]}
-            />
+          <CardContent className="space-y-3">
+            {taskData.donorLat && taskData.donorLng && taskData.ngoLat && taskData.ngoLng ? (
+              <>
+                <ReadOnlyMap 
+                  pickupLocation={{ lat: taskData.donorLat, lng: taskData.donorLng }}
+                  dropLocation={{ lat: taskData.ngoLat, lng: taskData.ngoLng }}
+                  pickupLabel={`Pickup: ${taskData.donorName}`}
+                  dropLabel={`Drop: ${taskData.ngoName}`}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => openInGoogleMaps(taskData.donorLat, taskData.donorLng, taskData.donorName)}
+                    variant="outline"
+                    className="flex-1 border-teal-500/50 text-teal-500 hover:bg-teal-500/10"
+                  >
+                    <Navigation className="w-4 h-4 mr-2" />
+                    Open Donor in Google Maps
+                  </Button>
+                  <Button
+                    onClick={() => openInGoogleMaps(taskData.ngoLat, taskData.ngoLng, taskData.ngoName)}
+                    variant="outline"
+                    className="flex-1 border-blue-500/50 text-blue-500 hover:bg-blue-500/10"
+                  >
+                    <Navigation className="w-4 h-4 mr-2" />
+                    Open NGO in Google Maps
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="w-full h-[300px] rounded-lg bg-gray-800 flex items-center justify-center border border-gray-700">
+                <p className="text-gray-400">Location data not available</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 

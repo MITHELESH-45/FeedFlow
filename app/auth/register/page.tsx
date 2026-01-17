@@ -15,9 +15,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { UserPlus, Mail, Lock, User, Building, Phone } from "lucide-react";
+import { useAppStore } from "@/lib/store";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const setUser = useAppStore((state) => state.setUser);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -51,13 +53,44 @@ export default function RegisterPage() {
     }
 
     setIsLoading(true);
+    setError("");
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          organization: formData.organization,
+          password: formData.password,
+          role: formData.role,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Registration failed");
+        setIsLoading(false);
+        return;
+      }
+
+      // Save token and user
+      localStorage.setItem("token", data.token);
+      setUser({
+        id: data.user._id || data.user.id,
+        name: data.user.name,
+        email: data.user.email,
+        role: data.user.role,
+        status: data.user.status,
+      });
+
       // Route based on role
-      switch (formData.role) {
+      switch (data.user.role) {
         case "donor":
           router.push("/donor");
           break;
@@ -67,13 +100,13 @@ export default function RegisterPage() {
         case "volunteer":
           router.push("/volunteer");
           break;
-        case "admin":
-          router.push("/admin");
-          break;
         default:
           router.push("/donor");
       }
-    }, 1000);
+    } catch (err: any) {
+      setError(err.message || "An error occurred");
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -284,4 +317,7 @@ export default function RegisterPage() {
     </div>
   );
 }
+
+
+
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,54 +40,62 @@ export default function NGOApprovalPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedNGO, setSelectedNGO] = useState<NGO | null>(null);
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
+  const [ngos, setNgos] = useState<NGO[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock data - would come from backend
-  const [ngos, setNgos] = useState<NGO[]>([
-    {
-      id: "1",
-      name: "Hope Foundation",
-      email: "contact@hopefoundation.org",
-      phone: "+1 234-567-8901",
-      address: "456 Community Ave, Uptown",
-      location: { lat: 40.7580, lng: -73.9855 },
-      registrationNumber: "NGO-2024-001",
-      status: "approved",
-      registeredAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: "2",
-      name: "Community Kitchen",
-      email: "info@communitykitchen.org",
-      phone: "+1 234-567-8902",
-      address: "789 Service St, Downtown",
-      location: { lat: 40.7128, lng: -74.0060 },
-      registrationNumber: "NGO-2024-002",
-      status: "pending",
-      registeredAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: "3",
-      name: "Shelter Aid",
-      email: "admin@shelteraid.org",
-      phone: "+1 234-567-8903",
-      address: "321 Shelter St, Midtown",
-      location: { lat: 40.7489, lng: -73.9680 },
-      registrationNumber: "NGO-2024-003",
-      status: "pending",
-      registeredAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: "4",
-      name: "Food for All",
-      email: "contact@foodforall.org",
-      phone: "+1 234-567-8904",
-      address: "555 Charity Rd, Uptown",
-      location: { lat: 40.7282, lng: -74.0776 },
-      registrationNumber: "NGO-2024-004",
-      status: "rejected",
-      registeredAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
-    },
-  ]);
+  useEffect(() => {
+    fetchNgos();
+  }, []);
+
+  const fetchNgos = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("Please login first");
+        setIsLoading(false);
+        return;
+      }
+      
+      const res = await fetch("/api/admin/ngos", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error("API Error:", errorData);
+        toast.error(errorData.error || "Failed to load NGOs");
+        setIsLoading(false);
+        return;
+      }
+      
+      const data = await res.json();
+      console.log("Fetched NGOs:", data);
+      
+      if (Array.isArray(data)) {
+        setNgos(data.map((u: any) => ({
+          id: u._id,
+          name: u.name,
+          email: u.email,
+          phone: u.phone || "N/A",
+          address: u.deliveryLocation?.address || "Unknown",
+          location: u.deliveryLocation || { lat: 0, lng: 0 },
+          registrationNumber: u.organization || "N/A",
+          status: u.status || "pending",
+          registeredAt: u.createdAt,
+        })));
+      } else {
+        console.error("Invalid data format:", data);
+        toast.error("Invalid response format");
+      }
+    } catch (error) {
+      console.error("Failed to fetch NGOs:", error);
+      toast.error("Failed to load NGOs");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const filteredNGOs = ngos.filter((ngo) => {
     const matchesSearch = ngo.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -96,20 +104,52 @@ export default function NGOApprovalPage() {
     return matchesSearch && matchesFilter;
   });
 
-  const handleApprove = (ngoId: string) => {
-    setNgos(ngos.map(ngo => 
-      ngo.id === ngoId ? { ...ngo, status: "approved" as const } : ngo
-    ));
-    setSelectedNGO(null);
-    toast.success("NGO approved successfully");
+  const handleApprove = async (ngoId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/admin/ngos/${ngoId}/approve`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (res.ok) {
+        toast.success("NGO approved successfully");
+        fetchNgos();
+        setSelectedNGO(null);
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to approve NGO");
+      }
+    } catch (error) {
+      toast.error("Error approving NGO");
+    }
   };
 
-  const handleReject = (ngoId: string) => {
-    setNgos(ngos.map(ngo => 
-      ngo.id === ngoId ? { ...ngo, status: "rejected" as const } : ngo
-    ));
-    setSelectedNGO(null);
-    toast.error("NGO rejected");
+  const handleReject = async (ngoId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/admin/ngos/${ngoId}/reject`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (res.ok) {
+        toast.success("NGO rejected");
+        fetchNgos();
+        setSelectedNGO(null);
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to reject NGO");
+      }
+    } catch (error) {
+      toast.error("Error rejecting NGO");
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -239,37 +279,44 @@ export default function NGOApprovalPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredNGOs.map((ngo) => (
-                <TableRow key={ngo.id}>
-                  <TableCell className="font-medium">{ngo.name}</TableCell>
-                  <TableCell>{ngo.registrationNumber}</TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      <div>{ngo.email}</div>
-                      <div className="text-muted-foreground">{ngo.phone}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {new Date(ngo.registeredAt).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>{getStatusBadge(ngo.status)}</TableCell>
-                  <TableCell>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedNGO(ngo)}
-                    >
-                      View Details
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {filteredNGOs.length === 0 && (
+              {isLoading ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    No NGOs found
+                    Loading NGOs...
                   </TableCell>
                 </TableRow>
+              ) : filteredNGOs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    {ngos.length === 0 ? "No NGOs registered yet" : "No NGOs match your search criteria"}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredNGOs.map((ngo) => (
+                  <TableRow key={ngo.id}>
+                    <TableCell className="font-medium">{ngo.name}</TableCell>
+                    <TableCell>{ngo.registrationNumber}</TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        <div>{ngo.email}</div>
+                        <div className="text-muted-foreground">{ngo.phone}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {new Date(ngo.registeredAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>{getStatusBadge(ngo.status)}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedNGO(ngo)}
+                      >
+                        View Details
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
