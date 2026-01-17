@@ -30,6 +30,7 @@ export default function ReportsPage() {
     expiryRate: 0,
     activeNGOs: 0,
     activeVolunteers: 0,
+    averageDeliveryTime: "N/A"
   });
   const [foodDonationData, setFoodDonationData] = useState<any[]>([]);
   const [foodTypeData, setFoodTypeData] = useState<any[]>([]);
@@ -55,6 +56,7 @@ export default function ReportsPage() {
             expiryRate: data.totalFood > 0 ? Math.round((data.expiredFood / data.totalFood) * 100) : 0,
             activeNGOs: data.totalNGOs || 0,
             activeVolunteers: data.totalVolunteers || 0,
+            averageDeliveryTime: data.averageDeliveryTime || "N/A",
           });
           
           // Set placeholder chart data (would need more detailed API endpoints for real chart data)
@@ -87,7 +89,7 @@ export default function ReportsPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Reports & Analytics</h1>
+        <h1 className="text-3xl font-bold">{"Reports & Analytics"}</h1>
         <p className="text-muted-foreground mt-2">System performance and transparency metrics</p>
       </div>
 
@@ -184,7 +186,7 @@ export default function ReportsPage() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
