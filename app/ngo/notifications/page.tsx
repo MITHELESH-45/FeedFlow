@@ -321,7 +321,7 @@ export default function NGONotificationsPage() {
                       No Notifications
                     </h3>
                     <p className="text-gray-400">
-                      You're all caught up! No {activeTab} notifications.
+                      {"You're all caught up! No"} {activeTab} {"notifications"}.
                     </p>
                   </div>
                 </Card>

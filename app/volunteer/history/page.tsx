@@ -578,7 +578,7 @@ export default function VolunteerHistoryPage() {
                                 </div>
                                 <span className="text-sm font-semibold text-white">5.0</span>
                               </div>
-                              <p className="text-sm text-gray-300 italic">"Quick and careful delivery!"</p>
+                              <p className="text-sm text-gray-300 italic">{"Quick and careful delivery!"}</p>
                             </div>
                           </div>
                         </div>

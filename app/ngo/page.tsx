@@ -368,7 +368,7 @@ export default function NGOPage() {
                   </div>
                   <div>
                     <p className="text-white font-medium">Awaiting Admin Approval</p>
-                    <p className="text-gray-400 text-sm">We're reviewing your NGO details</p>
+                    <p className="text-gray-400 text-sm">{"We're reviewing your NGO details"}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
