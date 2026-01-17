@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Task from "@/lib/models/Task";
 import Request from "@/lib/models/Request";
-import Food from "@/lib/models/Food";
-import User from "@/lib/models/User";
+import Food, { IFood } from "@/lib/models/Food";
+import User, { IUser } from "@/lib/models/User";
 import { requireAuth } from "@/lib/auth";
 import { createNotification } from "@/lib/utils/notifications";
 
@@ -64,9 +64,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Cast populated fields for TypeScript
+    const populatedFood = foodRequest.foodId as unknown as IFood;
+    const populatedNgo = foodRequest.ngoId as unknown as IUser;
+
     // Create task
     const task = await Task.create({
-      foodId: foodRequest.foodId._id,
+      foodId: populatedFood._id,
       requestId: foodRequest._id,
       volunteerId: volunteer._id,
       status: "assigned",
@@ -74,16 +78,16 @@ export async function POST(request: NextRequest) {
     });
 
     // Create notifications
-    const foodType = foodRequest.foodId.foodType || foodRequest.foodId.name || "food";
+    const foodType = populatedFood.foodType || populatedFood.name || "food";
     await createNotification(
       volunteer._id.toString(),
       "New Task Assigned",
-      `You have been assigned to deliver "${foodType}" to ${foodRequest.ngoId.name}.`,
+      `You have been assigned to deliver "${foodType}" to ${populatedNgo.name}.`,
       "info"
     );
 
     await createNotification(
-      foodRequest.ngoId._id.toString(),
+      populatedNgo._id.toString(),
       "Volunteer Assigned",
       `A volunteer has been assigned to deliver "${foodType}" to your location.`,
       "success"
